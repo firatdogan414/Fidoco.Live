@@ -1,9 +1,9 @@
 using System.Net;
-using Microsoft.AspNetCore.Mvc.Testing;
+using Fidoco.IntegrationTests.Infrastructure;
 
 namespace Fidoco.IntegrationTests;
 
-public sealed class HealthTests(WebApplicationFactory<Program> factory) : IClassFixture<WebApplicationFactory<Program>>
+public sealed class HealthTests(FidocoApiFactory factory) : IClassFixture<FidocoApiFactory>
 {
     [Fact]
     public async Task Liveness_endpoint_returns_healthy()
@@ -15,9 +15,19 @@ public sealed class HealthTests(WebApplicationFactory<Program> factory) : IClass
     }
 
     [Fact]
+    public async Task Health_endpoint_checks_module_databases()
+    {
+        var response = await factory.CreateClient().GetAsync("/health");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+    }
+
+    [Fact]
     public async Task Unknown_api_route_returns_404()
     {
-        var response = await factory.CreateClient().GetAsync("/api/v1/does-not-exist");
+        var tenant = await factory.CreateTenantAsync();
+
+        var response = await factory.ClientFor(tenant.Host).GetAsync("/api/v1/does-not-exist");
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }

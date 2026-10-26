@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using Fidoco.Host.Hosting;
 using Fidoco.Host.Observability;
 using Fidoco.Host.Realtime;
 using Fidoco.Modules.Catalog;
@@ -46,11 +47,13 @@ builder.Services
 var app = builder.Build();
 
 await app.Services.InitializeModuleDatabasesAsync();
+await app.SeedDevelopmentDataAsync();
 
 app.UseExceptionHandler();
 app.UseStatusCodePages();
 app.UseDefaultFiles();
 app.UseStaticFiles();
+app.UseTenantResolution();
 
 var api = app.MapGroup("/api/v1");
 api.MapTenantsEndpoints()
