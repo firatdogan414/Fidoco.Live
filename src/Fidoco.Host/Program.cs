@@ -28,6 +28,7 @@ builder.Services.AddMemoryCache();
 // In-memory now; switch to Redis (AddStackExchangeRedisCache) without code changes in the modules.
 builder.Services.AddDistributedMemoryCache();
 builder.Services.AddSingleton(TimeProvider.System);
+builder.Services.AddFidocoRateLimiting(configuration);
 
 var signalR = builder.Services.AddSignalR();
 if (!string.IsNullOrEmpty(configuration["Azure:SignalR:ConnectionString"]))
@@ -54,6 +55,10 @@ app.UseStatusCodePages();
 app.UseDefaultFiles();
 app.UseStaticFiles();
 app.UseTenantResolution();
+app.UseMiddleware<ClientHeaderMiddleware>();
+app.UseAuthentication();
+app.UseAuthorization();
+app.UseRateLimiter();
 
 var api = app.MapGroup("/api/v1");
 api.MapTenantsEndpoints()

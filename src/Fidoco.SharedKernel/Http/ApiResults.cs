@@ -62,6 +62,7 @@ public sealed class ValidationErrors
             return Add(field, "required");
         }
 
+        value = value.Trim();
         var at = value.IndexOf('@', StringComparison.Ordinal);
         var valid = value.Length <= 254 && at > 0 && at < value.Length - 3 && value.IndexOf('.', at) > at + 1 && !value.Contains(' ', StringComparison.Ordinal);
         return valid ? this : Add(field, "invalid_email");

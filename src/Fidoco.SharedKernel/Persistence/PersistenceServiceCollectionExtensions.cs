@@ -1,4 +1,5 @@
 using Fidoco.SharedKernel.Domain;
+using Fidoco.SharedKernel.Http;
 using Fidoco.SharedKernel.Outbox;
 using Fidoco.SharedKernel.Tenancy;
 using Microsoft.Data.Sqlite;
@@ -25,6 +26,8 @@ public static class PersistenceServiceCollectionExtensions
         services.TryAddSingleton<DomainEventRegistry>();
         services.TryAddSingleton<OutboxSignal>();
         services.TryAddSingleton(TimeProvider.System);
+        services.TryAddSingleton<PublicUrls>();
+        services.AddOptions<PublicUrlOptions>().Bind(configuration.GetSection(PublicUrlOptions.SectionName));
         services.AddOptions<DatabaseOptions>().Bind(configuration.GetSection(DatabaseOptions.SectionName));
         services.AddOptions<OutboxOptions>().Bind(configuration.GetSection(OutboxOptions.SectionName));
         return services;

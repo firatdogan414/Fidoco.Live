@@ -25,7 +25,7 @@ public class FidocoApiFactory : WebApplicationFactory<Program>
     {
     }
 
-    protected FidocoApiFactory(string provider, string? connectionString)
+    protected FidocoApiFactory(string provider, string? connectionString, IDictionary<string, string?>? overrides = null)
     {
         if (connectionString is null)
         {
@@ -42,7 +42,17 @@ public class FidocoApiFactory : WebApplicationFactory<Program>
             ["Outbox:Enabled"] = "false",
             ["Platform:Hosts:0"] = PlatformHost,
             ["Seed:DevelopmentData"] = "false",
+            ["Email:Provider"] = "File",
+            ["PublicUrls:Template"] = "https://{host}",
+            ["RateLimiting:LoginPerMinute"] = "1000",
+            ["RateLimiting:CheckoutPerMinute"] = "1000",
+            ["RateLimiting:PlaybackTokenPerMinute"] = "1000",
+            ["RateLimiting:HeartbeatPerMinute"] = "1000",
         };
+        foreach (var (key, value) in overrides ?? new Dictionary<string, string?>())
+        {
+            _settings[key] = value;
+        }
     }
 
     /// <summary>Starts at the real current time (Stripe signatures and cookies use wall-clock time).</summary>

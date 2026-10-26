@@ -12,8 +12,6 @@
     <PackageVersion Include="Microsoft.EntityFrameworkCore.Design" Version="$(MicrosoftPackagesVersion)" />
     <PackageVersion Include="Microsoft.AspNetCore.DataProtection.EntityFrameworkCore" Version="$(MicrosoftPackagesVersion)" />
     <PackageVersion Include="Microsoft.Extensions.Diagnostics.HealthChecks.EntityFrameworkCore" Version="$(MicrosoftPackagesVersion)" />
-    <!-- Identity -->
-    <PackageVersion Include="Microsoft.Extensions.Identity.Core" Version="$(MicrosoftPackagesVersion)" />
     <!-- Integrations -->
     <PackageVersion Include="Stripe.net" Version="53.0.0" />
     <PackageVersion Include="MailKit" Version="4.18.2" />
