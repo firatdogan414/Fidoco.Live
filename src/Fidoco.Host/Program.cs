@@ -8,6 +8,7 @@ using Fidoco.Modules.Notifications;
 using Fidoco.Modules.Payments;
 using Fidoco.Modules.Playback;
 using Fidoco.Modules.Tenants;
+using Fidoco.SharedKernel.Persistence;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -34,6 +35,7 @@ if (!string.IsNullOrEmpty(configuration["Azure:SignalR:ConnectionString"]))
 }
 
 builder.Services
+    .AddFidocoSharedKernel(configuration)
     .AddTenantsModule(configuration)
     .AddIdentityModule(configuration)
     .AddNotificationsModule(configuration)
@@ -42,6 +44,8 @@ builder.Services
     .AddPlaybackModule(configuration);
 
 var app = builder.Build();
+
+await app.Services.InitializeModuleDatabasesAsync();
 
 app.UseExceptionHandler();
 app.UseStatusCodePages();
