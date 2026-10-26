@@ -5,6 +5,7 @@ import { ApiError } from '../../api/client';
 import { ErrorMessage } from '../../shared/components';
 import { useErrorText } from '../../shared/errors';
 import { fromLocalInput, parseKronor, toLocalInput } from '../../shared/format';
+import { ImageUpload } from './ImageUpload';
 
 interface Props {
   initial?: AdminEvent;
@@ -73,9 +74,11 @@ export function EventForm({ initial, submitting, error, onSubmit }: Props) {
       </label>
       <label>
         {t('form.imageUrl')}
-        <input type="url" maxLength={500} value={imageUrl} onChange={(e) => setImageUrl(e.target.value)} />
+        <input maxLength={500} value={imageUrl} onChange={(e) => setImageUrl(e.target.value)} />
         {fieldError('imageUrl')}
       </label>
+      {imageUrl ? <img src={imageUrl} alt="" className="event-hero" /> : null}
+      <ImageUpload onUploaded={setImageUrl} />
       <fieldset className="fieldset">
         <label>
           {t('form.ticketName')}

@@ -54,6 +54,7 @@ public class FidocoApiFactory : WebApplicationFactory<Program>
             ["Stripe:WebhookSecret"] = TestPayments.WebhookSecret,
             ["Mux:SigningKeyId"] = MuxSigningKeyId,
             ["Mux:SigningKeyPrivate"] = Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(SigningKey.ExportRSAPrivateKeyPem())),
+            ["Storage:LocalPath"] = Path.Combine(Path.GetTempPath(), "fidoco-tests", Guid.NewGuid().ToString("N")),
             ["Platform:Seller:LegalName"] = "Fidoco AB",
             ["Platform:Seller:OrganizationNumber"] = "559999-9999",
             ["PublicUrls:Template"] = "https://{host}",

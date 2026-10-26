@@ -34,6 +34,7 @@ public static class TenantsModule
     {
         GetCurrentTenant.Map(api);
         PlatformTenantEndpoints.Map(api);
+        AdminBrandingEndpoints.Map(api);
         return api;
     }
 }

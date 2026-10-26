@@ -11,7 +11,8 @@
     "events": "Event",
     "viewSite": "Visa webbplatsen",
     "logout": "Logga ut",
-    "users": "Administratörer"
+    "users": "Administratörer",
+    "profile": "Profil"
   },
   "events": {
     "title": "Event",
@@ -113,5 +114,20 @@
     "invited": "Inbjudan skickad.",
     "pending": "Inbjuden",
     "lastLogin": "Senast inloggad"
+  },
+  "upload": {
+    "choose": "Ladda upp bild",
+    "uploading": "Laddar upp …",
+    "help": "JPG, PNG eller WebP, högst 5 MB."
+  },
+  "profile": {
+    "title": "Profil",
+    "logo": "Logotyp",
+    "primaryColor": "Huvudfärg (sidhuvud)",
+    "accentColor": "Accentfärg (knappar)",
+    "supportEmail": "Supportadress (svar på kvitton går hit)",
+    "save": "Spara",
+    "saved": "Sparat. Ändringen syns för tittarna inom en minut.",
+    "removeLogo": "Ta bort logotyp"
   }
 }

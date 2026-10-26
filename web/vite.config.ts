@@ -14,6 +14,7 @@ export default defineConfig({
     proxy: {
       '/api': { target: apiTarget, changeOrigin: false },
       '/hubs': { target: apiTarget, changeOrigin: false, ws: true },
+      '/files': { target: apiTarget, changeOrigin: false },
     },
   },
   build: {

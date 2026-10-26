@@ -68,6 +68,8 @@
     "invalid_host": "Ogiltigt domännamn.",
     "domain_taken": "Domänen används redan.",
     "domain_not_found": "Domänen finns inte.",
-    "last_domain": "En arrangör måste ha minst en domän."
+    "last_domain": "En arrangör måste ha minst en domän.",
+    "file_too_large": "Filen är för stor (högst 5 MB).",
+    "unsupported_image": "Endast JPG-, PNG- eller WebP-bilder."
   }
 }

@@ -29,6 +29,7 @@ builder.Services.AddMemoryCache();
 builder.Services.AddDistributedMemoryCache();
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddFidocoRateLimiting(configuration);
+builder.Services.AddFidocoFileStorage(configuration);
 
 var signalR = builder.Services.AddSignalR();
 if (!string.IsNullOrEmpty(configuration["Azure:SignalR:ConnectionString"]))
@@ -54,6 +55,7 @@ app.UseExceptionHandler();
 app.UseStatusCodePages();
 app.UseDefaultFiles();
 app.UseStaticFiles();
+app.UseUploadedFiles();
 app.UseTenantResolution();
 app.UseMiddleware<ClientHeaderMiddleware>();
 app.UseAuthentication();
@@ -67,6 +69,7 @@ api.MapTenantsEndpoints()
     .MapCatalogEndpoints()
     .MapPaymentsEndpoints()
     .MapPlaybackEndpoints();
+api.MapUploads();
 
 app.MapHub<LiveHub>("/hubs/live");
 app.MapHealthChecks("/health/live", new HealthCheckOptions { Predicate = _ => false });

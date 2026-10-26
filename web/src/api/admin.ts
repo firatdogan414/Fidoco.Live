@@ -1,4 +1,4 @@
-import { request } from './client';
+import { request, uploadFile } from './client';
 import type { EventStatus } from './types';
 
 export interface AdminTicket {
@@ -115,6 +115,10 @@ export const adminApi = {
     request<void>(`/admin/streams/${id}/primary-recording`, { method: 'PUT', body: { recordingId } }),
   /** Development only: simulate the encoder (fake video provider). */
   simulateStream: (id: string, status: 'active' | 'idle') => request<void>(`/dev/streams/${id}/simulate`, { method: 'POST', body: { status } }),
+
+  uploadImage: (file: File) => uploadFile<{ url: string }>('/admin/uploads', file),
+  updateBranding: (input: { logoUrl: string | null; primaryColor: string; accentColor: string; supportEmail: string | null }) =>
+    request<void>('/admin/branding', { method: 'PUT', body: input }),
 
   users: () => request<{ id: string; email: string; hasPassword: boolean; lastLoginAt: string | null }[]>('/admin/users'),
   inviteUser: (email: string) => request<void>('/admin/users', { method: 'POST', body: { email } }),

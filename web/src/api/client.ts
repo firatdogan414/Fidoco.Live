@@ -89,3 +89,24 @@ function fallbackCode(status: number): string {
 }
 
 export const request = createApiClient();
+
+/** Multipart upload of one file (field "file"); returns the parsed JSON response. */
+export async function uploadFile<T>(path: string, file: File, fetchImpl: FetchLike = (input, init) => fetch(input, init)): Promise<T> {
+  const form = new FormData();
+  form.append('file', file);
+  let response: Response;
+  try {
+    response = await fetchImpl(baseUrl + path, {
+      method: 'POST',
+      body: form,
+      headers: { Accept: 'application/json', 'X-Fidoco-Client': 'web' },
+      credentials: 'same-origin',
+    });
+  } catch {
+    throw new ApiError(0, 'network_error');
+  }
+  if (!response.ok) {
+    throw await toApiError(response);
+  }
+  return (await response.json()) as T;
+}

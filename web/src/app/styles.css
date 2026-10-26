@@ -516,3 +516,14 @@ input[type='color'] {
   height: 44px;
   width: 80px;
 }
+
+.logo-preview {
+  padding: 12px;
+  border-radius: var(--radius);
+  display: inline-block;
+}
+
+.logo-preview img {
+  height: 40px;
+  display: block;
+}
