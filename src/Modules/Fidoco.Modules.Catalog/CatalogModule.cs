@@ -42,6 +42,8 @@ public static class CatalogModule
             });
         }
 
+        services.AddHttpClient(nameof(MuxHealthCheck), c => c.Timeout = TimeSpan.FromSeconds(5));
+        services.AddHealthChecks().AddCheck<MuxHealthCheck>("mux", tags: ["external"]);
         services.AddScoped<ICatalogQueries, CatalogQueries>();
         services.AddScoped<ITicketAvailability, TicketAvailability>();
         services.AddScoped<IDataRetentionTask, CatalogRetention>();

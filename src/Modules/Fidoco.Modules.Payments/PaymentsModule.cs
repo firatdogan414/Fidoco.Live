@@ -34,6 +34,7 @@ public static class PaymentsModule
         }
 
         services.AddSingleton<IPaymentWebhookParser, StripeWebhookParser>();
+        services.AddHealthChecks().AddCheck<StripeHealthCheck>("stripe", tags: ["external"]);
         services.AddScoped<PaymentWebhookProcessor>();
         services.AddDomainEventHandler<CustomerDeleted, AnonymizePurchasesOnCustomerDeleted>();
         services.AddScoped<IDataRetentionTask, PaymentsRetention>();

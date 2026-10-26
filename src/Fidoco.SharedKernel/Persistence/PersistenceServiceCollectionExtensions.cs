@@ -25,6 +25,12 @@ public static class PersistenceServiceCollectionExtensions
         services.TryAddScoped<ModuleDbContextDependencies>();
         services.TryAddSingleton<DomainEventRegistry>();
         services.TryAddSingleton<OutboxSignal>();
+        if (!services.Any(d => d.ServiceType == typeof(OutboxHealthCheck)))
+        {
+            services.AddSingleton<OutboxHealthCheck>();
+            services.AddHealthChecks().AddCheck<OutboxHealthCheck>("outbox", tags: ["outbox"]);
+        }
+
         services.TryAddSingleton(TimeProvider.System);
         services.TryAddSingleton<PublicUrls>();
         services.AddOptions<PublicUrlOptions>().Bind(configuration.GetSection(PublicUrlOptions.SectionName));

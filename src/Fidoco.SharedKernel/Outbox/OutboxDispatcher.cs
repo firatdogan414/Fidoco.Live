@@ -17,6 +17,9 @@ public interface IOutboxDispatcher
 
     /// <summary>Claims and processes due messages; returns how many were handled (successfully or not).</summary>
     Task<int> ProcessPendingAsync(CancellationToken cancellationToken);
+
+    /// <summary>Pending, overdue (due for more than 5 minutes) and permanently failed messages.</summary>
+    Task<OutboxStats> GetStatsAsync(CancellationToken cancellationToken);
 }
 
 public sealed class OutboxDispatcher<TContext>(
@@ -68,6 +71,17 @@ public sealed class OutboxDispatcher<TContext>(
         }
 
         return handled;
+    }
+
+    public async Task<OutboxStats> GetStatsAsync(CancellationToken cancellationToken)
+    {
+        using var scope = scopeFactory.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<TContext>();
+        var overdueBefore = time.GetUtcNow().AddMinutes(-5);
+        var pending = await db.OutboxMessages.CountAsync(m => m.ProcessedAt == null && m.FailedAt == null, cancellationToken);
+        var overdue = await db.OutboxMessages.CountAsync(m => m.ProcessedAt == null && m.FailedAt == null && m.NextAttemptAt < overdueBefore, cancellationToken);
+        var failed = await db.OutboxMessages.CountAsync(m => m.FailedAt != null, cancellationToken);
+        return new OutboxStats(pending, overdue, failed);
     }
 
     private async Task ProcessOneAsync(TContext db, OutboxMessage message, OutboxOptions settings, CancellationToken cancellationToken)

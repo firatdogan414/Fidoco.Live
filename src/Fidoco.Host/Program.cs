@@ -73,7 +73,7 @@ api.MapUploads();
 
 app.MapHub<LiveHub>("/hubs/live");
 app.MapHealthChecks("/health/live", new HealthCheckOptions { Predicate = _ => false });
-app.MapHealthChecks("/health");
+app.MapHealthChecks("/health", new HealthCheckOptions { ResponseWriter = HealthResponse.WriteAsync });
 
 // Unknown API routes are 404s; everything else is the SPA.
 app.Map("/api/{**rest}", () => Results.NotFound());
