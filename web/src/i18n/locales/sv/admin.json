@@ -1,0 +1,83 @@
+{
+  "title": "Admin",
+  "login": {
+    "title": "Logga in som administratör",
+    "email": "E-post",
+    "password": "Lösenord",
+    "submit": "Logga in"
+  },
+  "nav": {
+    "events": "Event",
+    "viewSite": "Visa webbplatsen",
+    "logout": "Logga ut"
+  },
+  "events": {
+    "title": "Event",
+    "new": "Nytt event",
+    "empty": "Inga event ännu.",
+    "sold": "Sålda",
+    "revenue": "Intäkt",
+    "starts": "Start"
+  },
+  "status": {
+    "draft": "Utkast",
+    "scheduled": "Publicerat",
+    "live": "Live",
+    "ended": "Avslutat"
+  },
+  "form": {
+    "newTitle": "Nytt event",
+    "editTitle": "Redigera event",
+    "title": "Titel",
+    "slug": "Adress (lämna tomt för att skapa från titeln)",
+    "description": "Beskrivning",
+    "imageUrl": "Bild (adress)",
+    "startsAt": "Starttid",
+    "ticketName": "Biljettnamn",
+    "price": "Pris inkl. moms (kr)",
+    "replayDays": "Repris (antal dagar efter eventet, tomt = ingen repris)",
+    "save": "Spara",
+    "saved": "Sparat.",
+    "invalidPrice": "Ange ett pris, minst 3 kr."
+  },
+  "detail": {
+    "publish": "Publicera",
+    "publishHelp": "Eventet syns på webbplatsen och biljetter kan köpas.",
+    "end": "Avsluta eventet",
+    "endConfirm": "Avsluta eventet nu? Tittarna ser då att sändningen är slut.",
+    "publicPage": "Visa eventsidan",
+    "stats": "Försäljning och tittare",
+    "ticketsSold": "Sålda biljetter",
+    "refunded": "Återbetalda",
+    "revenue": "Intäkt inkl. moms",
+    "viewers": "Tittar just nu"
+  },
+  "stream": {
+    "title": "Sändning",
+    "create": "Skapa sändning",
+    "createHelp": "Skapar en livesändning hos Mux. Du får en serveradress och en strömnyckel att klistra in i vMix eller OBS.",
+    "status": "Status",
+    "statusActive": "Tar emot signal",
+    "statusIdle": "Ingen signal",
+    "statusDisabled": "Avstängd",
+    "statusUnknown": "Okänd",
+    "statusStored": "(senast kända)",
+    "server": "Server (RTMP)",
+    "serverSecure": "Server (RTMPS, krypterad)",
+    "streamKey": "Strömnyckel",
+    "show": "Visa",
+    "hide": "Dölj",
+    "copy": "Kopiera",
+    "copied": "Kopierat!",
+    "resetKey": "Byt strömnyckel",
+    "resetConfirm": "Byta strömnyckel? Produktionsprogramvaran måste uppdateras med den nya nyckeln.",
+    "help": "I vMix: Add Output → Stream → Custom RTMP Server. I OBS: Inställningar → Ström → Tjänst: Anpassad. Klistra in server och strömnyckel. Håll nyckeln hemlig.",
+    "recordings": "Inspelningar för repris",
+    "noRecordings": "Inga inspelningar ännu. De skapas automatiskt när sändningen pågår.",
+    "primary": "Används för repris",
+    "usePrimary": "Använd för repris",
+    "simulate": "Testläge: simulera signal",
+    "simulateStart": "Starta signal",
+    "simulateStop": "Stoppa signal"
+  }
+}

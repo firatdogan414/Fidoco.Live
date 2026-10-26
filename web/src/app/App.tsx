@@ -3,6 +3,7 @@ import { lazy, Suspense } from 'react';
 import { useTranslation } from 'react-i18next';
 import { BrowserRouter, Route, Routes } from 'react-router';
 import { viewerApi } from '../api/viewer';
+import { AdminApp } from '../features/admin/AdminApp';
 import { AccountPage } from '../features/viewer/pages/AccountPage';
 import { EventListPage } from '../features/viewer/pages/EventListPage';
 import { EventPage } from '../features/viewer/pages/EventPage';
@@ -60,6 +61,7 @@ function SiteRoutes() {
   return (
     <TenantProvider tenant={site.data.tenant}>
       <Routes>
+        <Route path="admin/*" element={<AdminApp />} />
         <Route element={<ViewerLayout />}>
           <Route index element={<EventListPage />} />
           <Route path="e/:slug" element={<EventPage />} />

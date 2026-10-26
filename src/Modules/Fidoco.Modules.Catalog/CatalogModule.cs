@@ -11,7 +11,6 @@ using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Options;
 
 namespace Fidoco.Modules.Catalog;
 
@@ -55,6 +54,11 @@ public static class CatalogModule
         AdminEventEndpoints.Map(api);
         AdminStreamEndpoints.Map(api);
         MuxWebhookEndpoint.Map(api);
+        if (api.ServiceProvider.GetRequiredService<IConfiguration>()[$"{VideoOptions.SectionName}:Provider"] == "Fake")
+        {
+            DevStreamSimulationEndpoints.Map(api);
+        }
+
         return api;
     }
 }

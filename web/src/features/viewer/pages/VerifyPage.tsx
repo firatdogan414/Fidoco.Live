@@ -25,6 +25,8 @@ export function VerifyPage() {
     viewerApi
       .verify(params.get('token') ?? '')
       .then(async (result) => {
+        // Refetch "who am I" before navigating so guarded pages do not see a cached "signed out".
+        await queryClient.refetchQueries({ queryKey: ['me'] });
         await queryClient.invalidateQueries();
         void navigate(result.returnPath || '/', { replace: true });
       })

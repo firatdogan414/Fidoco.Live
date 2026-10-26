@@ -46,3 +46,22 @@ export function countdown(nowMs: number, targetIso: string): CountdownParts {
     done: remaining === 0,
   };
 }
+
+/** "199" or "199,50" kronor → öre; null when not a valid amount. */
+export function parseKronor(text: string): number | null {
+  const normalized = text.trim().replace(/\s/g, '').replace(',', '.');
+  if (!/^\d+(\.\d{1,2})?$/.test(normalized)) return null;
+  return Math.round(Number(normalized) * 100);
+}
+
+/** ISO timestamp → value for <input type="datetime-local"> in the browser's time zone. */
+export function toLocalInput(iso: string): string {
+  const date = new Date(iso);
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
+/** <input type="datetime-local"> value (browser time zone) → ISO timestamp. */
+export function fromLocalInput(value: string): string {
+  return new Date(value).toISOString();
+}
