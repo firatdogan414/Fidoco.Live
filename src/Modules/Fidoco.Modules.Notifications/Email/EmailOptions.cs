@@ -31,3 +31,17 @@ internal sealed class SmtpOptions
 
     public bool UseStartTls { get; set; } = true;
 }
+
+/// <summary>The seller shown on receipts: Fidoco sells in its own name (merchant of record).</summary>
+internal sealed class SellerOptions
+{
+    public const string SectionName = "Platform:Seller";
+
+    public string LegalName { get; set; } = "Fidoco";
+
+    public string? OrganizationNumber { get; set; }
+
+    public string? VatNumber { get; set; }
+
+    public string? Address { get; set; }
+}

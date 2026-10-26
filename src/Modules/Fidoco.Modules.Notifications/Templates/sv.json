@@ -15,7 +15,13 @@
     "heading": "Tack för ditt köp!",
     "intro": "Här är ditt kvitto för {eventTitle}.",
     "button": "Titta på sändningen",
-    "outro": "Knappen loggar in dig direkt. Biljetten kan användas på en enhet åt gången."
+    "outro": "Knappen loggar in dig direkt. Biljetten kan användas på en enhet åt gången.",
+    "vat": "Varav moms {rate} %",
+    "total": "Totalt",
+    "seller": "Säljare",
+    "organizer": "Arrangör",
+    "orderNumber": "Ordernummer",
+    "purchaseDate": "Köpdatum"
   },
   "admin-invite": {
     "subject": "Du är inbjuden som administratör för {tenant}",

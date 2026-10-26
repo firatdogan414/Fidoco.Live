@@ -1,5 +1,8 @@
 using Fidoco.Contracts.Notifications;
+using Fidoco.Contracts.Payments;
 using Fidoco.Modules.Notifications.Email;
+using Fidoco.Modules.Notifications.Receipts;
+using Fidoco.SharedKernel.Domain;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -21,7 +24,9 @@ public static class NotificationsModule
                 "Email:Provider 'File' is only allowed in Development; configure Smtp.")
             .ValidateOnStart();
 
+        services.AddOptions<SellerOptions>().Bind(configuration.GetSection(SellerOptions.SectionName));
         services.AddSingleton<EmailTemplateRenderer>();
+        services.AddDomainEventHandler<PurchaseCompleted, PurchaseReceiptHandler>();
         services.AddScoped<IEmailDispatcher, EmailDispatcher>();
         if (section["Provider"] == "Smtp")
         {

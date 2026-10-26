@@ -1,4 +1,5 @@
 using Fidoco.Modules.Notifications.Email;
+using Fidoco.Modules.Payments.Infrastructure.Gateway;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
@@ -46,6 +47,9 @@ public class FidocoApiFactory : WebApplicationFactory<Program>
             ["Email:Provider"] = "File",
             ["Video:Provider"] = "Fake",
             ["Mux:WebhookSecret"] = MuxWebhookSecret,
+            ["Stripe:WebhookSecret"] = TestPayments.WebhookSecret,
+            ["Platform:Seller:LegalName"] = "Fidoco AB",
+            ["Platform:Seller:OrganizationNumber"] = "559999-9999",
             ["PublicUrls:Template"] = "https://{host}",
             ["RateLimiting:LoginPerMinute"] = "1000",
             ["RateLimiting:CheckoutPerMinute"] = "1000",
@@ -63,6 +67,8 @@ public class FidocoApiFactory : WebApplicationFactory<Program>
 
     internal CapturingEmailSender Emails { get; } = new();
 
+    internal TestPaymentGateway Payments { get; } = new();
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Testing");
@@ -77,6 +83,8 @@ public class FidocoApiFactory : WebApplicationFactory<Program>
             services.AddSingleton<TimeProvider>(Time);
             services.RemoveAll<IEmailSender>();
             services.AddSingleton<IEmailSender>(Emails);
+            services.RemoveAll<IPaymentGateway>();
+            services.AddSingleton<IPaymentGateway>(Payments);
             ConfigureFakes(services);
         });
     }

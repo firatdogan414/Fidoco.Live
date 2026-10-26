@@ -28,6 +28,14 @@ internal sealed class EmailTemplateRenderer
         }
     }
 
+    /// <summary>A single localized text from a template, e.g. a receipt label.</summary>
+    public string Text(string language, string template, string key, IReadOnlyDictionary<string, string>? values = null)
+    {
+        var texts = _languages.TryGetValue(language, out var found) ? found : _languages["sv"];
+        var text = texts.TryGetValue(template, out var entries) ? entries.GetValueOrDefault(key, key) : key;
+        return values is null ? text : Fill(text, new Dictionary<string, string>(values));
+    }
+
     public RenderedEmail Render(string language, EmailRequest request, EmailBranding branding)
     {
         var texts = _languages.TryGetValue(language, out var found) ? found : _languages["sv"];
