@@ -1,6 +1,6 @@
 # Fidoco Live – Plan
 
-Status: **Godkänd 2026-10-26**, med ändrad byggordning (§12), SQLite-konvertering av `DateTimeOffset` och SQL Server-jobb i CI samt DTU-modell för Azure SQL (§11).
+Status: **Godkänd 2026-10-26. Fas 1 (1a + 1b) är implementerad och testad**; se README.md, ARCHITECTURE.md och TODO.md., med ändrad byggordning (§12), SQLite-konvertering av `DateTimeOffset` och SQL Server-jobb i CI samt DTU-modell för Azure SQL (§11).
 
 Fidoco Live är en multi-tenant-plattform för betalda livesända event. Första tenant är Apex Fight
 Night (AFN): cirka 400 köpare per gala à 199 kr. Plattformen ska kunna växa till andra arrangörer
