@@ -26,7 +26,6 @@ namespace Fidoco.Modules.Tenants.Infrastructure.Migrations
             modelBuilder.Entity("Fidoco.Modules.Tenants.Domain.Tenant", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<string>("AccentColor")
@@ -76,7 +75,6 @@ namespace Fidoco.Modules.Tenants.Infrastructure.Migrations
             modelBuilder.Entity("Fidoco.Modules.Tenants.Domain.TenantDomain", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<string>("Host")
@@ -103,7 +101,6 @@ namespace Fidoco.Modules.Tenants.Infrastructure.Migrations
             modelBuilder.Entity("Fidoco.SharedKernel.Outbox.OutboxMessage", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<int>("Attempts")

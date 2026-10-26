@@ -74,7 +74,23 @@ public abstract class ModuleDbContext(DbContextOptions options, ModuleDbContextD
         });
 
         ConfigureModel(modelBuilder);
+        UseClientGeneratedGuidKeys(modelBuilder);
         ApplyTenantFilters(modelBuilder);
+    }
+
+    /// <summary>
+    /// Ids are always assigned in code (Guid v7). Telling EF so means a new child added to a tracked
+    /// parent's collection is inserted, not mistaken for an existing row to update.
+    /// </summary>
+    private static void UseClientGeneratedGuidKeys(ModelBuilder modelBuilder)
+    {
+        foreach (var key in modelBuilder.Model.GetEntityTypes().Select(t => t.FindPrimaryKey()).OfType<Microsoft.EntityFrameworkCore.Metadata.IMutableKey>())
+        {
+            foreach (var property in key.Properties.Where(p => p.ClrType == typeof(Guid)))
+            {
+                property.ValueGenerated = Microsoft.EntityFrameworkCore.Metadata.ValueGenerated.Never;
+            }
+        }
     }
 
     protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)

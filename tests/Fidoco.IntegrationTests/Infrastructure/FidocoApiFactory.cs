@@ -16,6 +16,7 @@ namespace Fidoco.IntegrationTests.Infrastructure;
 public class FidocoApiFactory : WebApplicationFactory<Program>
 {
     public const string PlatformHost = "platform.test";
+    public const string MuxWebhookSecret = "mux-test-webhook-secret";
 
     private readonly SqliteConnection? _keepAlive;
     private readonly Dictionary<string, string?> _settings;
@@ -43,6 +44,8 @@ public class FidocoApiFactory : WebApplicationFactory<Program>
             ["Platform:Hosts:0"] = PlatformHost,
             ["Seed:DevelopmentData"] = "false",
             ["Email:Provider"] = "File",
+            ["Video:Provider"] = "Fake",
+            ["Mux:WebhookSecret"] = MuxWebhookSecret,
             ["PublicUrls:Template"] = "https://{host}",
             ["RateLimiting:LoginPerMinute"] = "1000",
             ["RateLimiting:CheckoutPerMinute"] = "1000",

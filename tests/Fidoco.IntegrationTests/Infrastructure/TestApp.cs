@@ -63,3 +63,18 @@ public static class TestApp
         }
     }
 }
+
+public static class HttpResponseAssertions
+{
+    /// <summary>Like EnsureSuccessStatusCode, but includes the response body in the failure message.</summary>
+    public static async Task<HttpResponseMessage> EnsureSuccessAsync(this Task<HttpResponseMessage> responseTask)
+    {
+        var response = await responseTask;
+        if (!response.IsSuccessStatusCode)
+        {
+            throw new HttpRequestException($"{(int)response.StatusCode} {response.RequestMessage?.Method} {response.RequestMessage?.RequestUri}: {await response.Content.ReadAsStringAsync()}");
+        }
+
+        return response;
+    }
+}

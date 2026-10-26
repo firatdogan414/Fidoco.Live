@@ -12,7 +12,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Fidoco.Modules.Identity.Infrastructure.Migrations
 {
     [DbContext(typeof(IdentityDbContext))]
-    [Migration("20261026222832_Initial")]
+    [Migration("20261026223801_Initial")]
     partial class Initial
     {
         /// <inheritdoc />
@@ -29,7 +29,6 @@ namespace Fidoco.Modules.Identity.Infrastructure.Migrations
             modelBuilder.Entity("Fidoco.Modules.Identity.Domain.AdminUser", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<DateTimeOffset>("CreatedAt")
@@ -66,7 +65,6 @@ namespace Fidoco.Modules.Identity.Infrastructure.Migrations
             modelBuilder.Entity("Fidoco.Modules.Identity.Domain.Customer", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<DateTimeOffset>("CreatedAt")
@@ -94,7 +92,6 @@ namespace Fidoco.Modules.Identity.Infrastructure.Migrations
             modelBuilder.Entity("Fidoco.Modules.Identity.Domain.LoginToken", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<DateTimeOffset?>("ConsumedAt")
@@ -139,7 +136,6 @@ namespace Fidoco.Modules.Identity.Infrastructure.Migrations
             modelBuilder.Entity("Fidoco.SharedKernel.Outbox.OutboxMessage", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<int>("Attempts")
