@@ -35,6 +35,13 @@ internal sealed class TenantDirectory(TenantsDbContext db, IMemoryCache cache) :
             return LoadAsync(tenantId, cancellationToken);
         });
 
+    public async Task<CommercialTerms> GetCommercialTermsAsync(Guid tenantId, CancellationToken cancellationToken) =>
+        await db.Tenants.AsNoTracking()
+            .Where(t => t.Id == tenantId)
+            .Select(t => new CommercialTerms(t.CommissionPercent, t.CommissionFixedAmountPerTicket, t.OrganizerVatRegistered))
+            .SingleOrDefaultAsync(cancellationToken)
+        ?? throw new InvalidOperationException($"Tenant {tenantId} not found.");
+
     public static string NormalizeHost(string host) => host.Trim().TrimEnd('.').ToLowerInvariant();
 
     private async Task<TenantInfo?> LoadAsync(Guid tenantId, CancellationToken cancellationToken)

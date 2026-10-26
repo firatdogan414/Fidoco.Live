@@ -79,5 +79,18 @@
     "simulate": "Testläge: simulera signal",
     "simulateStart": "Starta signal",
     "simulateStop": "Stoppa signal"
+  },
+  "settlement": {
+    "title": "Avräkning",
+    "help": "Fidoco säljer biljetterna och redovisar momsen. Du fakturerar Fidoco för din andel enligt avräkningen. Återbetalda köp räknas inte.",
+    "gross": "Försäljning inkl. moms",
+    "vat": "Moms (redovisas av Fidoco)",
+    "net": "Netto exkl. moms",
+    "fee": "Fidocos provision",
+    "share": "Din andel exkl. moms",
+    "organizerVat": "Moms på din faktura (25 %)",
+    "notVatRegistered": "Ej momsregistrerad",
+    "invoiceTotal": "Att fakturera Fidoco",
+    "download": "Ladda ner CSV"
   }
 }

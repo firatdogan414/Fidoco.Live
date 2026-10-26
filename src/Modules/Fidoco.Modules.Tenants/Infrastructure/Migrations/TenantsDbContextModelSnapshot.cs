@@ -33,6 +33,13 @@ namespace Fidoco.Modules.Tenants.Infrastructure.Migrations
                         .HasMaxLength(20)
                         .HasColumnType("nvarchar(20)");
 
+                    b.Property<long>("CommissionFixedAmountPerTicket")
+                        .HasColumnType("bigint");
+
+                    b.Property<decimal>("CommissionPercent")
+                        .HasPrecision(5, 2)
+                        .HasColumnType("decimal(5,2)");
+
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("datetimeoffset");
 
@@ -44,6 +51,9 @@ namespace Fidoco.Modules.Tenants.Infrastructure.Migrations
                         .IsRequired()
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
+
+                    b.Property<bool>("OrganizerVatRegistered")
+                        .HasColumnType("bit");
 
                     b.Property<string>("PrimaryColor")
                         .IsRequired()

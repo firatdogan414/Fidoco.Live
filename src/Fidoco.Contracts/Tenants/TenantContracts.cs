@@ -13,12 +13,20 @@ public sealed record TenantInfo(
     string? SupportEmail,
     string PrimaryHost);
 
+/// <summary>
+/// The organizer's commercial terms with Fidoco (merchant of record): Fidoco keeps a commission of the
+/// revenue excluding VAT; the organizer invoices Fidoco for the rest.
+/// </summary>
+public sealed record CommercialTerms(decimal CommissionPercent, long CommissionFixedAmountPerTicket, bool OrganizerVatRegistered);
+
 /// <summary>Looks up tenants. Results are cached briefly; safe to call per request.</summary>
 public interface ITenantDirectory
 {
     Task<TenantInfo?> FindByHostAsync(string host, CancellationToken cancellationToken);
 
     Task<TenantInfo?> GetAsync(Guid tenantId, CancellationToken cancellationToken);
+
+    Task<CommercialTerms> GetCommercialTermsAsync(Guid tenantId, CancellationToken cancellationToken);
 }
 
 /// <summary>Request-level tenant information set by the tenant resolution middleware.</summary>

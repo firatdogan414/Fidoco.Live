@@ -15,3 +15,17 @@ public sealed class VatTests
         Assert.Equal(expected, Vat.Included(gross, rate));
     }
 }
+
+public sealed class CommissionTests
+{
+    [Theory]
+    [InlineData(15920, 1, 15, 0, 2388)]
+    [InlineData(15920, 1, 0, 500, 500)]
+    [InlineData(31840, 2, 10, 500, 4184)]
+    [InlineData(1000, 1, 50, 900, 1000)]
+    [InlineData(15920, 1, 0, 0, 0)]
+    public void Fee_is_percent_of_net_plus_fixed_per_ticket_capped_at_net(long net, int quantity, int percent, long fixedPerTicket, long expected)
+    {
+        Assert.Equal(expected, Commission.Fee(net, quantity, percent, fixedPerTicket));
+    }
+}

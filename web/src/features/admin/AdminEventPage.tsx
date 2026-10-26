@@ -7,6 +7,7 @@ import { ErrorMessage, Loading, Notice } from '../../shared/components';
 import { useErrorText } from '../../shared/errors';
 import { formatMoney } from '../../shared/format';
 import { EventForm } from './EventForm';
+import { SettlementPanel } from './SettlementPanel';
 import { StreamPanel } from './StreamPanel';
 
 export function AdminEventPage() {
@@ -56,6 +57,7 @@ export function AdminEventPage() {
 
       <Stats event={ev} />
       <StreamPanel event={ev} onChanged={reloadEvent} />
+      {ev.status !== 'draft' ? <SettlementPanel eventId={ev.id} /> : null}
 
       <div className="panel">
         <h2>{t('form.editTitle')}</h2>

@@ -476,3 +476,27 @@ img {
     grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 }
+
+.settlement {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.settlement th,
+.settlement td {
+  padding: 8px 0;
+  border-bottom: 1px solid var(--color-border);
+  font-weight: normal;
+  text-align: left;
+}
+
+.settlement td {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.settlement .total th,
+.settlement .total td {
+  font-weight: 700;
+  border-bottom: none;
+}

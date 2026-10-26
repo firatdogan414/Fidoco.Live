@@ -34,6 +34,7 @@ internal sealed class PaymentsDbContext(DbContextOptions<PaymentsDbContext> opti
             e.Property(x => x.TicketTypeName).HasMaxLength(100);
             e.Property(x => x.Currency).HasMaxLength(3);
             e.Property(x => x.VatRatePercent).HasPrecision(5, 2);
+            e.Property(x => x.CommissionPercent).HasPrecision(5, 2);
         });
 
         modelBuilder.Entity<Purchase>(e =>

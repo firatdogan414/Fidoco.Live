@@ -74,6 +74,22 @@ export interface EventSales {
   currency: string;
 }
 
+export interface Settlement {
+  eventId: string;
+  eventTitle: string;
+  ticketsSold: number;
+  ticketsRefunded: number;
+  grossAmount: number;
+  vatAmount: number;
+  netAmount: number;
+  platformFee: number;
+  organizerShare: number;
+  organizerVat: number;
+  organizerInvoiceTotal: number;
+  currency: string;
+  organizerVatRegistered: boolean;
+}
+
 export interface AdminMe {
   email: string;
   role: string;
@@ -102,5 +118,7 @@ export const adminApi = {
 
   sales: () => request<EventSales[]>('/admin/sales'),
   eventSales: (eventId: string) => request<EventSales>(`/admin/events/${eventId}/sales`),
+  settlement: (eventId: string) => request<Settlement>(`/admin/events/${eventId}/settlement`),
+  settlementCsvUrl: (eventId: string) => `/api/v1/admin/events/${eventId}/settlement?format=csv`,
   viewers: (eventId: string) => request<{ eventId: string; activeViewers: number }>(`/admin/events/${eventId}/viewers`),
 };

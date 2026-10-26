@@ -58,6 +58,11 @@ internal sealed class CheckoutSession : ITenantOwned
 
     public int? ReplayAccessDays { get; set; }
 
+    /// <summary>The tenant's commercial terms when the checkout started (snapshot).</summary>
+    public decimal CommissionPercent { get; set; }
+
+    public long CommissionFixedAmountPerTicket { get; set; }
+
     public DateTimeOffset ExpiresAt { get; set; }
 
     public DateTimeOffset CreatedAt { get; set; }
@@ -103,6 +108,8 @@ internal sealed class Purchase : AggregateRoot, ITenantOwned
 
     public static Purchase Complete(CheckoutSession checkout, Guid customerId, string email, long amountTotal, string? paymentIntentId, DateTimeOffset now)
     {
+        var lineGross = checkout.UnitPrice * checkout.Quantity;
+        var lineNet = lineGross - Vat.Included(lineGross, checkout.VatRatePercent);
         var purchase = new Purchase
         {
             Id = Guid.CreateVersion7(now),
@@ -127,6 +134,8 @@ internal sealed class Purchase : AggregateRoot, ITenantOwned
             VatRatePercent = checkout.VatRatePercent,
             IncludesLive = checkout.IncludesLive,
             ReplayAccessDays = checkout.ReplayAccessDays,
+            NetAmount = lineNet,
+            PlatformFeeAmount = Commission.Fee(lineNet, checkout.Quantity, checkout.CommissionPercent, checkout.CommissionFixedAmountPerTicket),
         });
 
         purchase.Raise(new PurchaseCompleted(
@@ -181,6 +190,22 @@ internal sealed class PurchaseLine : ITenantOwned
     public bool IncludesLive { get; set; }
 
     public int? ReplayAccessDays { get; set; }
+
+    /// <summary>Line amount excluding VAT, in minor units.</summary>
+    public long NetAmount { get; set; }
+
+    /// <summary>Fidoco's commission excluding VAT, computed from the terms at purchase time and never recomputed.</summary>
+    public long PlatformFeeAmount { get; set; }
+}
+
+internal static class Commission
+{
+    /// <summary>Percent of the net amount plus a fixed amount per ticket, never more than the net amount.</summary>
+    public static long Fee(long netAmount, int quantity, decimal percent, long fixedPerTicket)
+    {
+        var fee = (long)Math.Round(netAmount * percent / 100m, MidpointRounding.AwayFromZero) + fixedPerTicket * quantity;
+        return Math.Clamp(fee, 0, netAmount);
+    }
 }
 
 internal static class Vat

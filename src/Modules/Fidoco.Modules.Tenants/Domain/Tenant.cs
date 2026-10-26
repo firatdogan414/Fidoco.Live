@@ -25,6 +25,15 @@ internal sealed class Tenant
 
     public TenantStatus Status { get; set; } = TenantStatus.Active;
 
+    /// <summary>Fidoco's commission in percent of revenue excluding VAT.</summary>
+    public decimal CommissionPercent { get; set; } = 15m;
+
+    /// <summary>Optional fixed commission per ticket, excluding VAT, in minor units.</summary>
+    public long CommissionFixedAmountPerTicket { get; set; }
+
+    /// <summary>Whether the organizer adds VAT when invoicing Fidoco for its share.</summary>
+    public bool OrganizerVatRegistered { get; set; } = true;
+
     public DateTimeOffset CreatedAt { get; set; }
 
     public List<TenantDomain> Domains { get; set; } = [];

@@ -41,6 +41,7 @@ public static class PaymentsModule
         CheckoutEndpoints.Map(api);
         StripeWebhookEndpoint.Map(api);
         PurchaseQueryEndpoints.Map(api);
+        SettlementEndpoints.Map(api);
         if (IsFake(api.ServiceProvider.GetRequiredService<IConfiguration>()))
         {
             FakeCheckoutEndpoints.Map(api);

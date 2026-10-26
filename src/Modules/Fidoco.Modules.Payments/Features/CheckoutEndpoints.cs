@@ -2,6 +2,7 @@ using System.Security.Cryptography;
 using System.Text;
 using Fidoco.Contracts.Catalog;
 using Fidoco.Contracts.Identity;
+using Fidoco.Contracts.Tenants;
 using Fidoco.Modules.Payments.Domain;
 using Fidoco.Modules.Payments.Infrastructure;
 using Fidoco.Modules.Payments.Infrastructure.Gateway;
@@ -47,6 +48,7 @@ internal static class CheckoutEndpoints
         ICustomerAccounts customers,
         IPaymentGateway gateway,
         ITenantContext tenant,
+        ITenantDirectory tenants,
         PublicUrls urls,
         IOptions<PaymentsOptions> options,
         TimeProvider time,
@@ -91,6 +93,7 @@ internal static class CheckoutEndpoints
             return ApiResults.Conflict(reservation.FailureCode ?? "sold_out");
         }
 
+        var terms = await tenants.GetCommercialTermsAsync(tenant.RequiredTenantId, cancellationToken);
         var nonce = WebEncoders.Base64UrlEncode(RandomNumberGenerator.GetBytes(32));
         var checkout = new CheckoutSession
         {
@@ -108,6 +111,8 @@ internal static class CheckoutEndpoints
             VatRatePercent = ticket.VatRatePercent,
             IncludesLive = ticket.IncludesLive,
             ReplayAccessDays = ticket.ReplayAccessDays,
+            CommissionPercent = terms.CommissionPercent,
+            CommissionFixedAmountPerTicket = terms.CommissionFixedAmountPerTicket,
             ExpiresAt = expiresAt,
             CreatedAt = now,
         };

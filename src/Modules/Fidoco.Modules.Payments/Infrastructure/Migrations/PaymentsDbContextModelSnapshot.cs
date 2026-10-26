@@ -32,6 +32,13 @@ namespace Fidoco.Modules.Payments.Infrastructure.Migrations
                         .HasMaxLength(64)
                         .HasColumnType("nvarchar(64)");
 
+                    b.Property<long>("CommissionFixedAmountPerTicket")
+                        .HasColumnType("bigint");
+
+                    b.Property<decimal>("CommissionPercent")
+                        .HasPrecision(5, 2)
+                        .HasColumnType("decimal(5,2)");
+
                     b.Property<DateTimeOffset?>("CompletedAt")
                         .HasColumnType("datetimeoffset");
 
@@ -183,6 +190,12 @@ namespace Fidoco.Modules.Payments.Infrastructure.Migrations
 
                     b.Property<bool>("IncludesLive")
                         .HasColumnType("bit");
+
+                    b.Property<long>("NetAmount")
+                        .HasColumnType("bigint");
+
+                    b.Property<long>("PlatformFeeAmount")
+                        .HasColumnType("bigint");
 
                     b.Property<Guid>("PurchaseId")
                         .HasColumnType("uniqueidentifier");

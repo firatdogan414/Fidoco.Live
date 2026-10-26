@@ -28,6 +28,7 @@ internal sealed class TenantsDbContext(DbContextOptions<TenantsDbContext> option
             e.Property(t => t.AccentColor).HasMaxLength(20);
             e.Property(t => t.SupportEmail).HasMaxLength(254);
             e.Property(t => t.Status).HasConversion<string>().HasMaxLength(20);
+            e.Property(t => t.CommissionPercent).HasPrecision(5, 2);
             e.HasMany(t => t.Domains).WithOne().HasForeignKey(d => d.TenantId);
         });
 
