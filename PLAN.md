@@ -1,6 +1,6 @@
 # Fidoco Live – Plan
 
-Status: **Förslag, väntar på godkännande.** Reviderad 2026-10-26 med beslut 1, 2, 11, 13 och 14 (se §13a). Ingen implementationskod skrivs innan planen är godkänd.
+Status: **Godkänd 2026-10-26**, med ändrad byggordning (§12), SQLite-konvertering av `DateTimeOffset` och SQL Server-jobb i CI samt DTU-modell för Azure SQL (§11).
 
 Fidoco Live är en multi-tenant-plattform för betalda livesända event. Första tenant är Apex Fight
 Night (AFN): cirka 400 köpare per gala à 199 kr. Plattformen ska kunna växa till andra arrangörer
@@ -683,12 +683,23 @@ CanWatch(entitlement, event, now):
 ## 11. CI och drift
 
 - **GitHub Actions** (`ci.yml`, push + PR):
-  - **backend:** `setup-dotnet` 10.x → `dotnet restore`, `build -c Release`, `test`.
+  - **backend:** `setup-dotnet` 10.x → `dotnet restore`, `build -c Release`, `test`. Testerna
+    kör mot SQLite.
+  - **sqlserver:** SQL Server som service-container (`mcr.microsoft.com/mssql/server`). Jobbet
+    kör alla modulers migrationer mot en tom databas och därefter ett röktest mot SQL Server:
+    appen startar mot databasen, och ett köp går igenom från webhook till entitlement och token.
+    Jobbet fångar skillnader mellan providers som SQLite-testerna inte ser. Testerna i jobbet är
+    märkta `[Trait("Category","SqlServer")]` och hoppas över när
+    `FIDOCO_TEST_SQLSERVER` saknas.
   - **frontend:** `setup-node` 22 → `npm ci`, `lint`, `typecheck`, `test`, `build`.
   - NuGet och npm cachas.
 - **Driftsättning (README):**
-  - Azure App Service (Linux, .NET 10) + Azure SQL. `Always On` måste vara på för outbox och
-    städjobb.
+  - Azure App Service (Linux, .NET 10). `Always On` måste vara på för outbox och städjobb.
+  - **Azure SQL i DTU-modellen (Basic eller S0), inte serverless.** Outboxen pollar databasen
+    kontinuerligt, så en serverless-databas pausar aldrig. Den debiteras då för konstant
+    vCore-tid, och gratiskvoten (free offer) tar slut. När free offer-kvoten är slut pausas
+    databasen resten av månaden (standardinställningen), och då slutar plattformen fungera.
+    Basic eller S0 ger ett fast, förutsägbart pris. Samma varning står i README.
   - Konfig via App Settings och Key Vault-referenser.
   - Migrationer körs vid start bakom flaggan `Database:MigrateOnStartup` (enkel drift med en
     instans), eller som ett separat `efbundle`-steg.
@@ -704,7 +715,12 @@ CanWatch(entitlement, event, now):
 - **Databas lokalt:** SQLite-fil. Migrationer genereras för SQL Server, som är källan för
   produktion. Lokalt och i tester skapas SQLite-schemat från modellen per modul
   (`IRelationalDatabaseCreator.CreateTables()`), och dev-databasen återskapas vid modelländring
-  (`--reset-db`). Se beslut 15 för alternativet med SQLite-migrationer.
+  (`--reset-db`).
+- **SQLite och `DateTimeOffset`:** EF Core kan inte jämföra eller sortera `DateTimeOffset` på
+  SQLite. `ModuleDbContext` lägger därför, bara när providern är SQLite, en value converter på
+  alla `DateTimeOffset`-egenskaper som lagrar UTC-tid som `long` (Unix-millisekunder). Då
+  fungerar `WHERE`/`ORDER BY` på tider (t.ex. outboxens `NextAttemptAt`) likadant som på
+  SQL Server, som behåller `datetimeoffset`.
 - **Miljö:** Den här miljön saknar .NET SDK. Jag installerar .NET 10 SDK lokalt via
   `dotnet-install.sh` (påverkar inte repot) för att kunna bygga och köra tester.
 
@@ -712,43 +728,48 @@ CanWatch(entitlement, event, now):
 
 ## 12. Implementationsordning
 
-Varje punkt blir en commit. Bygg och tester ska vara gröna efter varje commit.
+Varje punkt blir en commit. Bygg och tester ska vara gröna efter varje commit. Huvudflödet
+byggs end-to-end först, inklusive tittar-UI. Därefter kommer resten av fas 1.
 
-### Fas 1 – MVP
+### Fas 1a – huvudflödet end-to-end
 1. **Skelett:**
    - solution, `Directory.*.props`, alla projekt (tomma moduler med `AddXxxModule`), Host med
      ProblemDetails, OpenTelemetry, `/health/live`, `/api/v1`-grupp och tom SignalR-hubb
    - Vite-app med i18n och Vitest
-   - arkitekturtester och CI-workflow
+   - arkitekturtester och CI-workflow (inklusive SQL Server-jobbet)
 2. **SharedKernel:** `ITenantContext`, `ModuleDbContext` (query filters, TenantId-stämpling,
-   domänhändelser → outbox), `OutboxProcessor` med claim, backoff och fan-out per handler,
-   cleanup. Tester för outbox-omförsök och tenant-filter.
+   SQLite-konvertering av `DateTimeOffset`, domänhändelser → outbox), `OutboxProcessor` med
+   claim, backoff och fan-out per handler. Tester för outbox-omförsök och tenant-filter.
 3. **Tenants:** modell, host-upplösning, `GET /tenant`, dev-seed (AFN på `afn.localhost`).
+   Inget plattforms-UI ännu.
 4. **Notifications:** `IEmailSender` (SMTP via MailKit + dev-sender som loggar och skriver
    `.html`-filer), mallar med i18n och branding, `IEmailDispatcher`.
-5. **Identity:**
-   - kunder med magic link
-   - admins och plattformsadmins med lösenord, inbjudan och reset
-   - cookies, policies, Data Protection i DB, rate limiting
-   - plattforms-endpoints för tenants och domäner
-6. **Catalog – event och biljettyper:** admin CRUD, publish/end, publika endpoints,
-   bilduppladdning (`IFileStorage`, lokal disk).
-7. **Catalog – streams och Mux:** `IVideoProvider` (Mux HTTP), skapa stream, RTMP och key,
-   statuspolling, Mux-webhooks, inspelningar, domänhändelser.
-8. **Payments:** checkout, `IPaymentGateway` (Stripe.net), reservationssöm, webhooks
-   (completed, async succeeded, expired, refunded), browser-nonce-inloggning, kvittohandler i
-   Notifications, försäljningsstatistik, provisionsberäkning och avräkningsrapport med CSV.
-9. **Playback:** entitlements från händelser, åtkomstregel, Mux-JWT, sessioner, heartbeat,
+5. **Identity:** kunder med magic link, TenantAdmin med lösenord (dev-seedad), cookies,
+   policies, Data Protection i DB, rate limiting.
+6. **Catalog:** event och biljettyp (admin CRUD, publish/end, publika endpoints), streams via
+   `IVideoProvider` (Mux HTTP), RTMP och key, statuspolling, Mux-webhooks, inspelningar,
+   domänhändelser.
+7. **Payments** (utan provision och avräkning): checkout, `IPaymentGateway` (Stripe.net),
+   reservationssöm, webhooks (completed, async succeeded, expired, refunded),
+   browser-nonce-inloggning, kvittohandler i Notifications, försäljningsstatistik.
+8. **Playback:** entitlements från händelser, åtkomstregel, Mux-JWT, sessioner, heartbeat,
    presence, `viewers`-endpoint.
-10. **Frontend – tittare:** branding och tema, eventlista och eventsida, köpflöde och tack-sida,
-    login och verifiering, visningssida med alla lägen, heartbeat och backoff, konto med radering,
-    sidor för köpvillkor och integritetspolicy (Fidoco som säljare, texter i i18n-filer).
-11. **Frontend – admin och plattform:** login, event-CRUD, streampanel med polling, statistik,
-    avräkning, branding, tenants med affärsvillkor.
-12. **OG-taggar och GDPR:** server-side OG-injektion, `CustomerDeleted`-flöde i alla moduler, full
-    `/health` med externa beroenden.
-13. **Dokumentation och slutverifiering:** README, ARCHITECTURE.md, TODO.md. Hela bygget och alla
-    tester (backend + frontend) körs gröna.
+9. **Frontend – tittare:** branding och tema, eventlista och eventsida, köpflöde och tack-sida,
+   login och verifiering, visningssida med alla lägen, heartbeat och backoff, konto, sidor för
+   köpvillkor och integritetspolicy.
+10. **Frontend – admin:** login, event-CRUD, streampanel med polling, statistik.
+
+### Fas 1b – resten av MVP
+11. **Avräkning och provision:** affärsvillkor på Tenant, `PlatformFeeAmount`/`NetAmount` på
+    `PurchaseLine`, avräkningsrapport med CSV, admin-vy.
+12. **Plattformsadmin med UI:** PlatformAdmin-inloggning, bootstrap, tenants, domäner,
+    affärsvillkor, inbjudan av TenantAdmins, lösenordsåterställning.
+13. **Bilduppladdning:** `IFileStorage` (lokal disk), logotyp och eventbild, branding-vy.
+14. **OG-taggar:** server-side OG-injektion i `index.html`.
+15. **GDPR-flöden:** `CustomerDeleted` i alla moduler, radering från konto och admin, städjobb.
+16. **Full `/health`:** DB, outbox-fel, Stripe och Mux.
+17. **Dokumentation och slutverifiering:** README, ARCHITECTURE.md, TODO.md. Hela bygget och
+    alla tester (backend + frontend + SQL Server-jobbet) körs gröna.
 
 ### Fas 2+ (föreslagen ordning, detaljeras i TODO.md)
 1. Kampsportsmodul med live-uppdaterat matchkort via SignalR
@@ -804,12 +825,12 @@ Varje punkt blir en commit. Bygg och tester ska vara gröna efter varje commit.
       (samma Azure-faktura, stöder SMTP och egen domän). Postmark är ett alternativ om
       leveransen blir ett problem. Leverantören är bara konfig och kan väljas vid driftsättning.
 
-### 13b. Kvar att ta ställning till
+### 13b. Övriga beslut (godkända enligt rekommendation 2026-10-26)
 
 Fidocos företagsuppgifter (bolagsform, org.nr, momsregistrering) och provisionsnivån för AFN
 behövs först vid driftsättning. Båda är konfiguration och blockerar inte implementationen.
 
-För punkterna nedan gäller min rekommendation om du svarar "ok".
+Alla punkter nedan är godkända enligt rekommendationen.
 
 3. **Admininloggning.**
    - *Rek:* e-post + lösenord (eget minimalt, `PasswordHasher`), 2FA i TODO.
