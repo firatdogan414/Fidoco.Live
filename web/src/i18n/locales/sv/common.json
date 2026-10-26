@@ -70,6 +70,7 @@
     "domain_not_found": "Domänen finns inte.",
     "last_domain": "En arrangör måste ha minst en domän.",
     "file_too_large": "Filen är för stor (högst 5 MB).",
-    "unsupported_image": "Endast JPG-, PNG- eller WebP-bilder."
+    "unsupported_image": "Endast JPG-, PNG- eller WebP-bilder.",
+    "confirmation_mismatch": "E-postadressen stämmer inte."
   }
 }

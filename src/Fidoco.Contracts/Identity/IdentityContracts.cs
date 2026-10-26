@@ -68,3 +68,9 @@ public interface ICustomerSignIn
     /// <summary>Signs the customer in on the current request (sets the customer cookie).</summary>
     Task SignInAsync(HttpContext context, Guid customerId, CancellationToken cancellationToken);
 }
+
+/// <summary>
+/// A customer's personal data was erased (GDPR). Other modules remove or anonymize what they hold:
+/// Payments keeps amounts and dates for bookkeeping but drops the link to the person.
+/// </summary>
+public sealed record CustomerDeleted(Guid CustomerId) : Fidoco.SharedKernel.Domain.IDomainEvent;

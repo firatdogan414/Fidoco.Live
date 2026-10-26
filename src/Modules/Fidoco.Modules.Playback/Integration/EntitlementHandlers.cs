@@ -62,3 +62,19 @@ internal sealed class RevokeEntitlementsOnRefund(PlaybackDbContext db, PlaybackS
         }
     }
 }
+
+/// <summary>GDPR: a deleted customer's entitlements are removed and running sessions stop.</summary>
+internal sealed class DeleteEntitlementsOnCustomerDeleted(PlaybackDbContext db, PlaybackSessionStore sessions) : IDomainEventHandler<Fidoco.Contracts.Identity.CustomerDeleted>
+{
+    public async Task HandleAsync(Fidoco.Contracts.Identity.CustomerDeleted domainEvent, CancellationToken cancellationToken)
+    {
+        var entitlements = await db.Entitlements.Where(e => e.CustomerId == domainEvent.CustomerId).ToListAsync(cancellationToken);
+        db.Entitlements.RemoveRange(entitlements);
+        await db.SaveChangesAsync(cancellationToken);
+        foreach (var entitlement in entitlements)
+        {
+            await sessions.MarkRevokedAsync(entitlement.Id, cancellationToken);
+            await sessions.ClearActiveAsync(entitlement.Id, cancellationToken);
+        }
+    }
+}

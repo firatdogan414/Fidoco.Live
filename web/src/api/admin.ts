@@ -120,6 +120,7 @@ export const adminApi = {
   updateBranding: (input: { logoUrl: string | null; primaryColor: string; accentColor: string; supportEmail: string | null }) =>
     request<void>('/admin/branding', { method: 'PUT', body: input }),
 
+  eraseCustomer: (email: string) => request<void>('/admin/customers/delete', { method: 'POST', body: { email } }),
   users: () => request<{ id: string; email: string; hasPassword: boolean; lastLoginAt: string | null }[]>('/admin/users'),
   inviteUser: (email: string) => request<void>('/admin/users', { method: 'POST', body: { email } }),
 

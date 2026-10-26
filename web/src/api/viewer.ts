@@ -25,6 +25,7 @@ export const viewerApi = {
   verify: (token: string) => request<{ returnPath: string }>('/auth/verify', { method: 'POST', body: { token } }),
   logout: () => request<void>('/auth/logout', { method: 'POST' }),
   me: () => request<Me>('/me'),
+  deleteAccount: (confirmEmail: string) => request<void>('/me', { method: 'DELETE', body: { confirmEmail } }),
   myPurchases: () => request<MyPurchase[]>('/me/purchases'),
 
   startCheckout: (ticketTypeId: string) => request<CheckoutStarted>('/checkout', { method: 'POST', body: { ticketTypeId } }),

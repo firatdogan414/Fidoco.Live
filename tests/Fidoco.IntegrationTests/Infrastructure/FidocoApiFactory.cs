@@ -49,6 +49,7 @@ public class FidocoApiFactory : WebApplicationFactory<Program>
             ["Database:ConnectionString"] = connectionString,
             ["Database:MigrateOnStartup"] = "true",
             ["Outbox:Enabled"] = "false",
+            ["Retention:Enabled"] = "false",
             ["Platform:Hosts:0"] = PlatformHost,
             ["Seed:DevelopmentData"] = "false",
             ["Email:Provider"] = "File",

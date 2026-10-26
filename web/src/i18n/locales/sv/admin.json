@@ -129,5 +129,13 @@
     "save": "Spara",
     "saved": "Sparat. Ändringen syns för tittarna inom en minut.",
     "removeLogo": "Ta bort logotyp"
+  },
+  "gdpr": {
+    "title": "Radera en köpares uppgifter",
+    "help": "Används när en köpare ber om att få sina uppgifter raderade. Köpet finns kvar i försäljningen men utan koppling till personen, och biljetten slutar fungera.",
+    "email": "Köparens e-post",
+    "erase": "Radera",
+    "confirm": "Radera köparens uppgifter? Det går inte att ångra.",
+    "done": "Klart. Om adressen hade ett konto är uppgifterna raderade."
   }
 }

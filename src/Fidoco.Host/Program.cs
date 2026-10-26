@@ -30,6 +30,7 @@ builder.Services.AddDistributedMemoryCache();
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddFidocoRateLimiting(configuration);
 builder.Services.AddFidocoFileStorage(configuration);
+builder.Services.AddHostedService<RetentionService>();
 
 var signalR = builder.Services.AddSignalR();
 if (!string.IsNullOrEmpty(configuration["Azure:SignalR:ConnectionString"]))

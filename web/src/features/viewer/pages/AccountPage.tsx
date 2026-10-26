@@ -1,8 +1,9 @@
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, Navigate } from 'react-router';
 import { viewerApi } from '../../../api/viewer';
-import { ErrorMessage, Loading } from '../../../shared/components';
+import { ErrorMessage, Loading, Notice } from '../../../shared/components';
 import { useErrorText } from '../../../shared/errors';
 import { formatMoney, formatShortDate } from '../../../shared/format';
 import { useMe } from '../useMe';
@@ -48,6 +49,40 @@ export function AccountPage() {
           );
         })}
       </ul>
+      <DeleteAccount />
     </section>
+  );
+}
+
+function DeleteAccount() {
+  const { t } = useTranslation('viewer');
+  const errorText = useErrorText();
+  const queryClient = useQueryClient();
+  const [email, setEmail] = useState('');
+  const remove = useMutation({
+    mutationFn: () => viewerApi.deleteAccount(email),
+    onSuccess: () => queryClient.setQueryData(['me'], null),
+  });
+
+  if (remove.isSuccess) return <Notice>{t('account.deleted')}</Notice>;
+
+  const submit = (e: FormEvent) => {
+    e.preventDefault();
+    remove.mutate();
+  };
+
+  return (
+    <form className="form panel" onSubmit={submit}>
+      <h2>{t('account.deleteTitle')}</h2>
+      <p className="small muted">{t('account.deleteHelp')}</p>
+      <label>
+        {t('account.deleteConfirm')}
+        <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
+      </label>
+      <button type="submit" className="button button-danger" disabled={remove.isPending}>
+        {t('account.deleteButton')}
+      </button>
+      {remove.isError ? <ErrorMessage>{errorText(remove.error)}</ErrorMessage> : null}
+    </form>
   );
 }

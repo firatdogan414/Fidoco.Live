@@ -65,6 +65,36 @@ export function AdminProfilePage() {
         {save.isSuccess ? <Notice>{t('profile.saved')}</Notice> : null}
         {save.isError ? <ErrorMessage>{errorText(save.error)}</ErrorMessage> : null}
       </form>
+      <EraseCustomer />
     </section>
+  );
+}
+
+/** GDPR requests from buyers handled by the organizer. */
+function EraseCustomer() {
+  const { t } = useTranslation('admin');
+  const errorText = useErrorText();
+  const [email, setEmail] = useState('');
+  const erase = useMutation({ mutationFn: () => adminApi.eraseCustomer(email), onSuccess: () => setEmail('') });
+
+  const submit = (e: FormEvent) => {
+    e.preventDefault();
+    if (window.confirm(t('gdpr.confirm'))) erase.mutate();
+  };
+
+  return (
+    <form className="form panel" onSubmit={submit}>
+      <h2>{t('gdpr.title')}</h2>
+      <p className="small muted">{t('gdpr.help')}</p>
+      <label>
+        {t('gdpr.email')}
+        <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
+      </label>
+      <button type="submit" className="button button-danger" disabled={erase.isPending}>
+        {t('gdpr.erase')}
+      </button>
+      {erase.isSuccess ? <Notice>{t('gdpr.done')}</Notice> : null}
+      {erase.isError ? <ErrorMessage>{errorText(erase.error)}</ErrorMessage> : null}
+    </form>
   );
 }

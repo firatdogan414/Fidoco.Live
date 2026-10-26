@@ -55,6 +55,8 @@ public static class IdentityModule
         services.AddScoped<IPasswordHasher<PlatformAdmin>, PasswordHasher<PlatformAdmin>>();
         services.AddScoped<AdminAccounts>();
         services.AddScoped<AdminInvitations>();
+        services.AddScoped<CustomerErasure>();
+        services.AddScoped<IDataRetentionTask, IdentityRetention>();
         services.AddScoped<IDevelopmentSeeder, PlatformAdminDevelopmentSeeder>();
         services.AddHostedService<PlatformAdminBootstrap>();
         services.AddScoped<ICustomerAccounts, CustomerAccounts>();
@@ -69,6 +71,7 @@ public static class IdentityModule
         CustomerAuthEndpoints.Map(api);
         AdminAuthEndpoints.Map(api);
         PlatformAuthEndpoints.Map(api);
+        CustomerDataEndpoints.Map(api);
         return api;
     }
 

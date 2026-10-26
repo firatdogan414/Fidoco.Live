@@ -49,6 +49,7 @@ public static class PersistenceServiceCollectionExtensions
         services.AddSingleton<OutboxDispatcher<TContext>>();
         services.AddSingleton<IOutboxDispatcher>(sp => sp.GetRequiredService<OutboxDispatcher<TContext>>());
         services.AddHostedService<OutboxProcessor<TContext>>();
+        services.AddScoped<IDataRetentionTask, OutboxRetention<TContext>>();
         services.AddHealthChecks().AddDbContextCheck<TContext>($"db-{typeof(TContext).Name}", tags: ["db"]);
         return services;
     }

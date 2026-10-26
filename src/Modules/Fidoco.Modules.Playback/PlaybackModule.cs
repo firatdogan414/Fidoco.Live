@@ -40,6 +40,7 @@ public static class PlaybackModule
         services.AddSingleton<IViewerPresence, InMemoryViewerPresence>();
         services.AddDomainEventHandler<PurchaseCompleted, GrantEntitlementsOnPurchase>();
         services.AddDomainEventHandler<PurchaseRefunded, RevokeEntitlementsOnRefund>();
+        services.AddDomainEventHandler<Fidoco.Contracts.Identity.CustomerDeleted, DeleteEntitlementsOnCustomerDeleted>();
         return services;
     }
 

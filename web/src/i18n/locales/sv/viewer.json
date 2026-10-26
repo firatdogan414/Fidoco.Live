@@ -66,6 +66,11 @@
     "purchases": "Mina köp",
     "noPurchases": "Inga köp ännu.",
     "refunded": "Återbetald",
-    "watch": "Titta"
+    "watch": "Titta",
+    "deleteTitle": "Radera mitt konto",
+    "deleteHelp": "Din e-postadress och kopplingen till dina köp tas bort, och dina biljetter slutar fungera. Belopp och datum för köpen sparas i sju år enligt bokföringslagen, utan koppling till dig.",
+    "deleteConfirm": "Skriv din e-postadress för att bekräfta",
+    "deleteButton": "Radera mitt konto",
+    "deleted": "Ditt konto är raderat."
   }
 }

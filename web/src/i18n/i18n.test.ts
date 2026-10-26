@@ -10,7 +10,7 @@ const apiErrorCodes = [
   'event_not_draft', 'event_not_running', 'stream_exists', 'stream_not_found', 'video_provider_unavailable',
   'recording_not_ready', 'validation_failed', 'rate_limited', 'capacity_not_supported', 'admin_exists',
   'password_too_short', 'tenant_not_found', 'invalid_color', 'invalid_host', 'domain_taken', 'domain_not_found', 'last_domain',
-  'file_too_large', 'unsupported_image',
+  'file_too_large', 'unsupported_image', 'confirmation_mismatch',
 ];
 
 describe('translations', () => {

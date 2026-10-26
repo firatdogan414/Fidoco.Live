@@ -16,6 +16,8 @@ internal sealed class Customer : AggregateRoot, ITenantOwned
     public DateTimeOffset CreatedAt { get; set; }
 
     public DateTimeOffset? LastLoginAt { get; set; }
+
+    public void MarkDeleted() => Raise(new Fidoco.Contracts.Identity.CustomerDeleted(Id));
 }
 
 internal enum LoginTokenPurpose

@@ -1,4 +1,6 @@
+using Fidoco.Contracts.Identity;
 using Fidoco.Modules.Payments.Features;
+using Fidoco.SharedKernel.Domain;
 using Fidoco.Modules.Payments.Infrastructure;
 using Fidoco.Modules.Payments.Infrastructure.Gateway;
 using Fidoco.SharedKernel.Persistence;
@@ -33,6 +35,8 @@ public static class PaymentsModule
 
         services.AddSingleton<IPaymentWebhookParser, StripeWebhookParser>();
         services.AddScoped<PaymentWebhookProcessor>();
+        services.AddDomainEventHandler<CustomerDeleted, AnonymizePurchasesOnCustomerDeleted>();
+        services.AddScoped<IDataRetentionTask, PaymentsRetention>();
         return services;
     }
 

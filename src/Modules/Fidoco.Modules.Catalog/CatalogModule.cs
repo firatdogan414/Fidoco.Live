@@ -44,6 +44,7 @@ public static class CatalogModule
 
         services.AddScoped<ICatalogQueries, CatalogQueries>();
         services.AddScoped<ITicketAvailability, TicketAvailability>();
+        services.AddScoped<IDataRetentionTask, CatalogRetention>();
         services.AddScoped<IDevelopmentSeeder, CatalogDevelopmentSeeder>();
         return services;
     }
