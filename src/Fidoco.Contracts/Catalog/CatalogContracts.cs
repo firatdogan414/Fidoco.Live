@@ -39,6 +39,9 @@ public sealed record EventPlaybackInfo(
 
 public sealed record EventSummary(Guid EventId, string Slug, string Title, DateTimeOffset StartsAt);
 
+/// <summary>What a shared link shows (Open Graph tags). Only for published events.</summary>
+public sealed record EventShareInfo(string Slug, string Title, string? Description, string? ImageUrl, DateTimeOffset StartsAt);
+
 /// <summary>Read access to the catalog for other modules (current tenant only).</summary>
 public interface ICatalogQueries
 {
@@ -48,6 +51,9 @@ public interface ICatalogQueries
     Task<EventPlaybackInfo?> GetPlaybackInfoAsync(Guid eventId, CancellationToken cancellationToken);
 
     Task<EventSummary?> GetEventSummaryAsync(Guid eventId, CancellationToken cancellationToken);
+
+    /// <summary>Published event by slug for link previews; null for drafts and unknown slugs.</summary>
+    Task<EventShareInfo?> GetShareInfoAsync(string slug, CancellationToken cancellationToken);
 }
 
 public sealed record ReservationResult(bool Succeeded, Guid? ReservationId, string? FailureCode)

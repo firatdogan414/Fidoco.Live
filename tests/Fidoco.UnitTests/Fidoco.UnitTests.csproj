@@ -3,6 +3,7 @@
     <PackageReference Include="Microsoft.Extensions.TimeProvider.Testing" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\..\src\Fidoco.Host\Fidoco.Host.csproj" />
     <ProjectReference Include="..\..\src\Fidoco.SharedKernel\Fidoco.SharedKernel.csproj" />
     <ProjectReference Include="..\..\src\Fidoco.Contracts\Fidoco.Contracts.csproj" />
     <ProjectReference Include="..\..\src\Modules\Fidoco.Modules.Identity\Fidoco.Modules.Identity.csproj" />

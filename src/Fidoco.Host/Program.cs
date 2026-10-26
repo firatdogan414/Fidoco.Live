@@ -53,7 +53,6 @@ await app.SeedDevelopmentDataAsync();
 
 app.UseExceptionHandler();
 app.UseStatusCodePages();
-app.UseDefaultFiles();
 app.UseStaticFiles();
 app.UseUploadedFiles();
 app.UseTenantResolution();
@@ -77,7 +76,7 @@ app.MapHealthChecks("/health");
 
 // Unknown API routes are 404s; everything else is the SPA.
 app.Map("/api/{**rest}", () => Results.NotFound());
-app.MapFallbackToFile("index.html");
+app.MapSpaFallback();
 
 await app.RunAsync();
 

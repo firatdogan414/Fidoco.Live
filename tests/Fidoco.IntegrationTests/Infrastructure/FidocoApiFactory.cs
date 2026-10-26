@@ -20,6 +20,9 @@ public class FidocoApiFactory : WebApplicationFactory<Program>
     public const string MuxWebhookSecret = "mux-test-webhook-secret";
     public const string MuxSigningKeyId = "test-signing-key";
 
+    /// <summary>Stand-in for the built SPA's index.html (same placeholder as web/index.html).</summary>
+    public const string IndexHtml = "<!doctype html><html><head><title>Fidoco Live</title><!--fidoco:meta--></head><body><div id=\"root\"></div></body></html>";
+
     /// <summary>RSA key standing in for the Mux signing key; tests verify playback tokens with it.</summary>
     public static readonly System.Security.Cryptography.RSA SigningKey = System.Security.Cryptography.RSA.Create(2048);
 
@@ -79,6 +82,10 @@ public class FidocoApiFactory : WebApplicationFactory<Program>
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Testing");
+        var webRoot = Path.Combine(Path.GetTempPath(), "fidoco-tests", "webroot");
+        Directory.CreateDirectory(webRoot);
+        File.WriteAllText(Path.Combine(webRoot, "index.html"), IndexHtml);
+        builder.UseWebRoot(webRoot);
         foreach (var (key, value) in _settings)
         {
             builder.UseSetting(key, value);

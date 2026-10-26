@@ -49,6 +49,16 @@ internal sealed class CatalogQueries(CatalogDbContext db, ITenantContext tenant,
             .Where(e => e.Id == eventId)
             .Select(e => new EventSummary(e.Id, e.Slug, e.Title, e.StartsAt))
             .SingleOrDefaultAsync(cancellationToken);
+
+    public Task<EventShareInfo?> GetShareInfoAsync(string slug, CancellationToken cancellationToken) =>
+        cache.GetOrCreateAsync($"catalog:share:{tenant.TenantId}:{slug}", entry =>
+        {
+            entry.AbsoluteExpirationRelativeToNow = TimeSpan.FromSeconds(60);
+            return db.Events.AsNoTracking()
+                .Where(e => e.Slug == slug && e.Status != EventStatus.Draft)
+                .Select(e => new EventShareInfo(e.Slug, e.Title, e.Description, e.ImageUrl, e.StartsAt))
+                .SingleOrDefaultAsync(cancellationToken);
+        });
 }
 
 /// <summary>

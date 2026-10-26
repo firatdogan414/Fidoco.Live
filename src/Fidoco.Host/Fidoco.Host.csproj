@@ -27,6 +27,7 @@
   </ItemGroup>
   <ItemGroup>
     <InternalsVisibleTo Include="Fidoco.IntegrationTests" />
+    <InternalsVisibleTo Include="Fidoco.UnitTests" />
   </ItemGroup>
 
   <!-- On publish: build the React SPA and ship it as wwwroot. Skip with -p:SkipSpaBuild=true. -->
