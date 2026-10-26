@@ -195,6 +195,17 @@ public sealed class CatalogTests(FidocoApiFactory factory) : IClassFixture<Fidoc
     }
 
     [Fact]
+    public async Task First_webhook_applies_even_if_the_providers_clock_is_behind_ours()
+    {
+        var e = await factory.CreatePublishedEventAsync();
+
+        await factory.PostMuxWebhookAsync("video.live_stream.active", e.ProviderStreamId, factory.Time.GetUtcNow().AddSeconds(-2));
+
+        var ev = await e.Admin.GetFromJsonAsync<AdminEvent>($"/api/v1/admin/events/{e.Event.Id}");
+        Assert.Equal("live", ev!.Status);
+    }
+
+    [Fact]
     public async Task Mux_webhook_for_unknown_stream_is_acknowledged()
     {
         var response = await factory.PostMuxWebhookAsync("video.live_stream.active", "unknown-stream", factory.Time.GetUtcNow());

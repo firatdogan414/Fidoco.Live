@@ -89,8 +89,9 @@ internal static class AdminStreamEndpoints
 
         stream.ProviderStreamId = created.ProviderStreamId;
         stream.LivePlaybackId = created.PlaybackId;
+        // No StatusChangedAt yet: only provider timestamps are compared, so the first webhook always applies
+        // even if Mux's clock is slightly behind ours.
         stream.Status = StreamStatus.Idle;
-        stream.StatusChangedAt = now;
         ev.Streams.Add(stream);
         await db.SaveChangesAsync(cancellationToken);
         return await Get(stream.Id, db, video, cancellationToken);

@@ -18,6 +18,10 @@ public class FidocoApiFactory : WebApplicationFactory<Program>
 {
     public const string PlatformHost = "platform.test";
     public const string MuxWebhookSecret = "mux-test-webhook-secret";
+    public const string MuxSigningKeyId = "test-signing-key";
+
+    /// <summary>RSA key standing in for the Mux signing key; tests verify playback tokens with it.</summary>
+    public static readonly System.Security.Cryptography.RSA SigningKey = System.Security.Cryptography.RSA.Create(2048);
 
     private readonly SqliteConnection? _keepAlive;
     private readonly Dictionary<string, string?> _settings;
@@ -48,6 +52,8 @@ public class FidocoApiFactory : WebApplicationFactory<Program>
             ["Video:Provider"] = "Fake",
             ["Mux:WebhookSecret"] = MuxWebhookSecret,
             ["Stripe:WebhookSecret"] = TestPayments.WebhookSecret,
+            ["Mux:SigningKeyId"] = MuxSigningKeyId,
+            ["Mux:SigningKeyPrivate"] = Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(SigningKey.ExportRSAPrivateKeyPem())),
             ["Platform:Seller:LegalName"] = "Fidoco AB",
             ["Platform:Seller:OrganizationNumber"] = "559999-9999",
             ["PublicUrls:Template"] = "https://{host}",
