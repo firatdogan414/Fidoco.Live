@@ -1,0 +1,45 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+  <PropertyGroup>
+    <UserSecretsId>fidoco-live-host</UserSecretsId>
+    <SpaRoot>..\..\web\</SpaRoot>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Fidoco.SharedKernel\Fidoco.SharedKernel.csproj" />
+    <ProjectReference Include="..\Fidoco.Contracts\Fidoco.Contracts.csproj" />
+    <ProjectReference Include="..\Modules\Fidoco.Modules.Identity\Fidoco.Modules.Identity.csproj" />
+    <ProjectReference Include="..\Modules\Fidoco.Modules.Tenants\Fidoco.Modules.Tenants.csproj" />
+    <ProjectReference Include="..\Modules\Fidoco.Modules.Catalog\Fidoco.Modules.Catalog.csproj" />
+    <ProjectReference Include="..\Modules\Fidoco.Modules.Payments\Fidoco.Modules.Payments.csproj" />
+    <ProjectReference Include="..\Modules\Fidoco.Modules.Playback\Fidoco.Modules.Playback.csproj" />
+    <ProjectReference Include="..\Modules\Fidoco.Modules.Notifications\Fidoco.Modules.Notifications.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="Microsoft.Azure.SignalR" />
+    <PackageReference Include="OpenTelemetry.Extensions.Hosting" />
+    <PackageReference Include="OpenTelemetry.Instrumentation.AspNetCore" />
+    <PackageReference Include="OpenTelemetry.Instrumentation.Http" />
+    <PackageReference Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" />
+    <PackageReference Include="Azure.Monitor.OpenTelemetry.AspNetCore" />
+  </ItemGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="Fidoco.IntegrationTests" />
+  </ItemGroup>
+
+  <!-- On publish: build the React SPA and ship it as wwwroot. Skip with -p:SkipSpaBuild=true. -->
+  <Target Name="PublishSpa" AfterTargets="ComputeFilesToPublish" Condition="'$(SkipSpaBuild)' != 'true'">
+    <Exec WorkingDirectory="$(SpaRoot)" Command="npm ci" />
+    <Exec WorkingDirectory="$(SpaRoot)" Command="npm run build" />
+    <ItemGroup>
+      <SpaDistFiles Include="$(SpaRoot)dist\**" />
+      <ResolvedFileToPublish Include="@(SpaDistFiles->'%(FullPath)')" Exclude="@(ResolvedFileToPublish)">
+        <RelativePath>wwwroot\%(RecursiveDir)%(FileName)%(Extension)</RelativePath>
+        <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+        <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
+      </ResolvedFileToPublish>
+    </ItemGroup>
+  </Target>
+</Project>
