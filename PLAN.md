@@ -1,6 +1,6 @@
 # Fidoco Live – Plan
 
-Status: **Förslag, väntar på godkännande.** Ingen implementationskod skrivs innan planen är godkänd.
+Status: **Förslag, väntar på godkännande.** Reviderad 2026-10-26 med beslut 1, 2, 11, 13 och 14 (se §13a). Ingen implementationskod skrivs innan planen är godkänd.
 
 Fidoco Live är en multi-tenant-plattform för betalda livesända event. Första tenant är Apex Fight
 Night (AFN): cirka 400 köpare per gala à 199 kr. Plattformen ska kunna växa till andra arrangörer
@@ -135,10 +135,10 @@ Allt utom `CatalogModule` är `internal`. Testprojekten får åtkomst via `Inter
 
 | Modul | Ansvar (fas 1) | Publika kontrakt (Fidoco.Contracts) | Domänhändelser ut |
 |---|---|---|---|
-| **Tenants** | Tenant (namn, slug, logotyp, färger), domäner, upplösning från host-headern, branding-API, PlatformAdmins CRUD av tenants | `ITenantDirectory` (lookup by host/id), `TenantInfo` | `TenantCreated` |
+| **Tenants** | Tenant (namn, slug, logotyp, färger, supportadress), domäner, upplösning från host-headern, branding-API, affärsvillkor (provision), PlatformAdmins CRUD av tenants | `ITenantDirectory` (lookup by host/id, commercial terms), `TenantInfo` | `TenantCreated` |
 | **Identity** | Kunder (köpare) med magic link, admin-användare (TenantAdmin) och PlatformAdmin med lösenord, cookies, Data Protection-nycklar i DB, GDPR-radering av kund | `ICustomerAccounts` (GetOrCreate by email), `ICustomerLoginLinks` (create link for receipt), `ICurrentUser` | `CustomerDeleted` |
 | **Catalog** | Event, Stream (Mux live stream), TicketType, inspelningar (repris), Mux-webhooks, eventstatus | `ICatalogQueries` (event/ticket info, playback targets), `ITicketAvailability` (reservation seam) | `EventPublished`, `StreamWentLive`, `StreamWentIdle`, `EventEnded`, `RecordingReady` |
-| **Payments** | Checkout (Stripe), CheckoutSession, Purchase + PurchaseLine, Stripe-webhooks, återbetalning, försäljningsstatistik | `IPurchaseQueries` (stats, customer purchases) | `PurchaseCompleted`, `PurchaseRefunded` |
+| **Payments** | Checkout (Stripe), CheckoutSession, Purchase + PurchaseLine, Stripe-webhooks, återbetalning, försäljningsstatistik, avräkning mot arrangör (§8.5) | `IPurchaseQueries` (stats, customer purchases) | `PurchaseCompleted`, `PurchaseRefunded` |
 | **Playback** | Entitlements (rätt att titta), Mux-tokens, uppspelningssessioner, heartbeat, en session per biljett, aktiva tittare | `IPlaybackStats` (active viewers) | – (fas 1) |
 | **Notifications** | E-postmallar (i18n, tenant-branding), utskick av kvitto och inloggningslänkar | `IEmailDispatcher` (send templated email now) | – |
 
@@ -164,7 +164,7 @@ Frontend får en motsvarande mapp under `web/src/verticals/`, och eventsidan har
 - **Upplösning:** En middleware slår upp `Host`-headern mot `tenants.TenantDomains` via
   `ITenantDirectory`. Resultatet cachas i minnet i 60 s per instans, vilket är ett läs-cache och
   inte sessionstillstånd. Resultatet sätts på ett scoped `ITenantContext`.
-  - En plattformshost (konfig `Platform:Hosts`, t.ex. `admin.fidoco.live`) har ingen tenant och
+  - En plattformshost (konfig `Platform:Hosts`, t.ex. `admin.fidoco.se`) har ingen tenant och
     används för PlatformAdmin och webhooks.
   - Okänd host ger 404 för API:et och en enkel "okänd sida" i SPA:n.
   - Lokalt används `afn.localhost`, `test.localhost` och `admin.localhost`. `*.localhost` pekar
@@ -294,8 +294,12 @@ Konventioner:
 - **Fetstil** = `ITenantOwned`, med TenantId och global query filter.
 
 ### tenants
-- `Tenants`: Id, Name, Slug (unik), LogoUrl?, PrimaryColor, AccentColor, Status (Active/Suspended),
-  CreatedAt. *(Tenant-tabellen är plattformsdata. Den är inte själv tenant-filtrerad.)*
+- `Tenants`: Id, Name, Slug (unik), LogoUrl?, PrimaryColor, AccentColor, SupportEmail,
+  Status (Active/Suspended), CreatedAt. *(Tenant-tabellen är plattformsdata. Den är inte själv
+  tenant-filtrerad.)*
+  - Affärsvillkor (sätts av PlatformAdmin, se §8.5): CommissionPercent (provision i % av intäkt
+    exkl. moms), CommissionFixedAmount (öre exkl. moms per biljett, standard 0),
+    OrganizerVatRegistered (bool, styr om arrangörens fakturaunderlag ska ha moms).
 - `TenantDomains`: Id, TenantId, Host (unik, lowercase), IsPrimary.
 
 ### identity
@@ -346,7 +350,9 @@ Konventioner:
   - Stripe-referenser: ProviderPaymentIntentId, ProviderChargeId?
   - Tider: CompletedAt, RefundedAt?
 - **`PurchaseLines`**: Id, TenantId, PurchaseId, EventId, TicketTypeId, TicketTypeName
-  (snapshot), Quantity (1 i fas 1), UnitPrice, VatRatePercent. *(Rader i stället för en enda
+  (snapshot), Quantity (1 i fas 1), UnitPrice, VatRatePercent, NetAmount (exkl. moms),
+  PlatformFeeAmount (Fidocos provision exkl. moms, beräknad från tenantens villkor vid köptillfället
+  och aldrig omräknad i efterhand). *(Rader i stället för en enda
   TicketTypeId på köpet. Då går det att sälja fysisk biljett + stream i samma köp senare utan
   migreringsproblem.)*
 - `ProcessedWebhookEvents` (payments), **`PaymentsOutbox`**.
@@ -438,6 +444,7 @@ CanWatch(entitlement, event, now):
 | POST | `/admin/streams/{id}/reset-key` | Ny stream key |
 | PUT | `/admin/streams/{id}/primary-recording` | Välj inspelning för repris |
 | GET | `/admin/events/{id}/sales` | Antal köp, intäkt (Payments) |
+| GET | `/admin/events/{id}/settlement` | Avräkning (§8.5), även `?format=csv` |
 | GET | `/admin/events/{id}/viewers` | Aktiva tittare just nu (Playback) |
 | PUT | `/admin/branding` | Logotyp, färger |
 | POST | `/admin/uploads` | Bilduppladdning (logotyp, eventbild) → URL |
@@ -451,6 +458,8 @@ CanWatch(entitlement, event, now):
 | PUT | `/platform/tenants/{id}` | Redigera, suspendera |
 | POST/DELETE | `/platform/tenants/{id}/domains` | Domäner |
 | POST | `/platform/tenants/{id}/admins` | Bjud in TenantAdmin |
+| PUT | `/platform/tenants/{id}/terms` | Affärsvillkor (provision) |
+| GET | `/platform/settlements?from=&to=` | Avräkning för alla tenants och event, även CSV |
 
 ### Övrigt (utanför `/api`)
 - `/health/live` och `/health`.
@@ -491,8 +500,9 @@ CanWatch(entitlement, event, now):
       reservationen bekräftas, och outbox-rader för `PurchaseCompleted` skrivs.
 7. **Outbox:**
    - Playback skapar en `Entitlement`.
-   - Notifications skickar kvittot. Det innehåller pris, moms, säljare och en magic link som
-     skapas *vid sändning* via `ICustomerLoginLinks`, så ingen rå token ligger i outboxen.
+   - Notifications skickar kvittot. Säljare är Fidoco (juridiskt namn, org.nr och momsreg.nr
+     från konfig `Platform:Seller`), och arrangören anges som "Arrangör: <tenant>". Kvittot
+     innehåller pris, moms och en magic link som skapas *vid sändning* via `ICustomerLoginLinks`, så ingen rå token ligger i outboxen.
 8. Tack-sidan ser `completed`. Om browser-noncen matchar loggas kunden in direkt (engångs, inom
    1 h) och skickas till visningssidan. Annars visas "kolla din e-post".
 9. **Övriga webhooks:**
@@ -545,6 +555,38 @@ CanWatch(entitlement, event, now):
 - **Cookie:** rensas.
 - **Övrig data:** processade outbox-rader och webhook-dedup rensas efter 30 dagar. Ej förbrukade
   login-tokens rensas efter utgång. En daglig `CleanupService` sköter det.
+
+### 8.5 Affärsmodell och avräkning (beslut 1)
+- **Säljare:** Fidoco säljer streamen i eget namn (merchant of record). Köparen betalar till
+  Fidocos Stripe-konto, och Fidoco redovisar momsen (25 %) på hela priset.
+- **Arrangörens andel:** arrangören fakturerar Fidoco för sin andel enligt en avräkningsrapport.
+  Fidoco behåller provisionen. Stripe-avgifterna bärs av Fidoco och ska alltså täckas av
+  provisionen.
+- **Provision per tenant:** `CommissionPercent` av intäkten exkl. moms, plus ett valfritt fast
+  belopp per biljett (`CommissionFixedAmount`). Provisionen beräknas och sparas på varje
+  `PurchaseLine` vid köpet, så ändrade villkor påverkar aldrig gamla köp.
+- **Återbetalning:** ett återbetalt köp ger 0 kr för både arrangör och Fidoco i avräkningen.
+- **Avräkningsrapport per event**, för TenantAdmin (egna event) och PlatformAdmin (alla), med
+  CSV-export:
+  - antal sålda och antal återbetalda biljetter
+  - brutto inkl. moms, moms och netto exkl. moms
+  - Fidocos provision
+  - arrangörens andel exkl. moms, plus moms om `OrganizerVatRegistered`
+- Rapporten är fakturaunderlaget för arrangören. Självfakturering (Fidoco skapar arrangörens
+  faktura) och Stripe Connect ligger i TODO.
+- **Räkneexempel** (400 × 199 kr, 15 % provision; procentsatsen är bara ett exempel):
+
+  | Post | Belopp |
+  |---|---|
+  | Brutto inkl. moms | 79 600 kr |
+  | Moms (Fidoco redovisar) | 15 920 kr |
+  | Netto exkl. moms | 63 680 kr |
+  | Fidocos provision | 9 552 kr |
+  | Arrangörens andel | 54 128 kr + 13 532 kr moms = 67 660 kr fakturerat |
+
+  Fidoco drar av arrangörens moms som ingående moms. Stripe-avgiften (ca 1,5 % + 1,80 kr per
+  europeiskt kort; kontrollera aktuell prislista) dras från Fidocos provision, ca 1 900 kr i
+  exemplet.
 
 ---
 
@@ -650,8 +692,15 @@ CanWatch(entitlement, event, now):
   - Konfig via App Settings och Key Vault-referenser.
   - Migrationer körs vid start bakom flaggan `Database:MigrateOnStartup` (enkel drift med en
     instans), eller som ett separat `efbundle`-steg.
-  - Egen domän + App Service Managed Certificate per tenant-domän i fas 1 (manuellt steg).
-  - Stripe- och Mux-webhooks pekar på plattformshosten.
+  - Domäner (se beslut 13):
+    - `admin.fidoco.se` är plattformshost för PlatformAdmin och webhooks.
+    - Varje tenant får `{slug}.fidoco.se`, t.ex. `afn.fidoco.se`.
+    - Egna domäner som `stream.afnmma.se` pekas med CNAME mot appen och verifieras med en
+      TXT-post.
+    - Varje hostname binds med ett App Service Managed Certificate (gratis, manuellt steg per
+      tenant i fas 1).
+  - Stripe- och Mux-webhooks pekar på `https://admin.fidoco.se/api/v1/webhooks/...`.
+  - E-post skickas från `noreply@fidoco.se`. SPF, DKIM och DMARC sätts upp för `fidoco.se`.
 - **Databas lokalt:** SQLite-fil. Migrationer genereras för SQL Server, som är källan för
   produktion. Lokalt och i tester skapas SQLite-schemat från modellen per modul
   (`IRelationalDatabaseCreator.CreateTables()`), och dev-databasen återskapas vid modelländring
@@ -688,13 +737,14 @@ Varje punkt blir en commit. Bygg och tester ska vara gröna efter varje commit.
    statuspolling, Mux-webhooks, inspelningar, domänhändelser.
 8. **Payments:** checkout, `IPaymentGateway` (Stripe.net), reservationssöm, webhooks
    (completed, async succeeded, expired, refunded), browser-nonce-inloggning, kvittohandler i
-   Notifications, försäljningsstatistik.
+   Notifications, försäljningsstatistik, provisionsberäkning och avräkningsrapport med CSV.
 9. **Playback:** entitlements från händelser, åtkomstregel, Mux-JWT, sessioner, heartbeat,
    presence, `viewers`-endpoint.
 10. **Frontend – tittare:** branding och tema, eventlista och eventsida, köpflöde och tack-sida,
-    login och verifiering, visningssida med alla lägen, heartbeat och backoff, konto med radering.
+    login och verifiering, visningssida med alla lägen, heartbeat och backoff, konto med radering,
+    sidor för köpvillkor och integritetspolicy (Fidoco som säljare, texter i i18n-filer).
 11. **Frontend – admin och plattform:** login, event-CRUD, streampanel med polling, statistik,
-    branding, tenants.
+    avräkning, branding, tenants med affärsvillkor.
 12. **OG-taggar och GDPR:** server-side OG-injektion, `CustomerDeleted`-flöde i alla moduler, full
     `/health` med externa beroenden.
 13. **Dokumentation och slutverifiering:** README, ARCHITECTURE.md, TODO.md. Hela bygget och alla
@@ -707,7 +757,7 @@ Varje punkt blir en commit. Bygg och tester ska vara gröna efter varje commit.
 4. Fler biljettyper och åtkomstkoder
 5. Klippbibliotek
 6. Rabattkoder
-7. Stripe Connect för utbetalningar till arrangörer
+7. Stripe Connect för utbetalningar till arrangörer (ersätter manuell avräkning; självfakturering som mellansteg)
 8. Fakturabetalning för B2B
 9. Flera parallella streams per event
 10. VAT-hantering för fler länder
@@ -717,20 +767,50 @@ Varje punkt blir en commit. Bygg och tester ska vara gröna efter varje commit.
 
 ---
 
-## 13. Beslut att ta ställning till
+## 13. Beslut
 
-Min rekommendation står först i varje punkt. Om du svarar "ok" gäller rekommendationerna.
+### 13a. Fattade beslut (reviderat 2026-10-26)
 
-1. **Vems Stripe-konto (merchant of record) i fas 1?**
-   - *Rek:* Plattformens Stripe-konto. Pengarna betalas ut till AFN manuellt tills Stripe Connect
-     finns (TODO).
-   - *Alternativ:* Stripe-nycklar per tenant (AFN säljer själv, webhook-hemlighet per tenant).
-   - Valet avgör vem som står som säljare på kvittot och vem som redovisar momsen. Stäm av med
-     AFN och er redovisning.
-2. **Moms och kvitto.** Är 199 kr inklusive 25 % moms? Kvittot ska ha säljarens namn, org.nr och
-   momsbelopp. Jag lägger till `LegalName`, `OrganizationNumber` och `Address` för säljaren:
-   - *Rek:* som plattformsinställning, om beslut 1 blir "plattformens konto".
-   - Annars på Tenant.
+1. **Fidoco är säljare (merchant of record).**
+   - Pengarna går till Fidocos Stripe-konto. Arrangören fakturerar Fidoco för sin andel enligt
+     avräkningsrapporten, och Fidoco behåller en provision (§8.5).
+   - Det tekniskt enklaste upplägget (ett Stripe-konto) är också det juridiskt rena:
+     - Stripes villkor kräver att kontoinnehavaren är den som faktiskt säljer.
+     - Att i stället ta emot pengar i arrangörens namn och betala vidare liknar en betaltjänst
+       enligt betaltjänstlagen och kräver tillstånd.
+   - Följd: Fidoco ansvarar mot köparen för köpvillkor, reklamationer och återbetalningar. Därför
+     tillkommer sidor för köpvillkor och integritetspolicy i fas 1.
+   - Stripe Connect, där arrangören säljer själv och Stripe delar upp beloppet automatiskt, finns
+     kvar i TODO som nästa steg när fler arrangörer ansluter.
+2. **Moms:** 25 % ingår i priset (199 kr = 159,20 kr + 39,80 kr moms).
+   - Fidocos juridiska uppgifter (namn, org.nr, momsreg.nr, adress) ligger i konfig
+     `Platform:Seller` och står på kvittot. Arrangören anges som "Arrangör".
+   - Köpare i andra EU-länder (moms i köparens land via OSS) ligger kvar i TODO.
+11. **GDPR-radering:** köp anonymiseras och sparas i 7 år för bokföringen. Kopplingen till
+    personen tas bort.
+13. **Domäner: Fidoco äger `fidoco.se`. En `.live`-domän behövs inte.**
+    - `admin.fidoco.se`: plattformsadmin och webhooks.
+    - `{slug}.fidoco.se`: varje tenant, t.ex. `afn.fidoco.se`.
+    - Egen domän via CNAME, t.ex. `stream.afnmma.se`.
+    - `fidoco.se` (roten) är fri för en framtida marknadssida och används inte av appen i fas 1.
+    - Produkten och koden heter fortfarande Fidoco (namnrymd `Fidoco.*`).
+14. **E-post skickas från Fidoco för tenantens räkning.**
+    - Avsändare: `"Apex Fight Night via Fidoco" <noreply@fidoco.se>`.
+    - `Reply-To` = tenantens `SupportEmail`. Svar på frågor om eventet hamnar då hos arrangören,
+      och det syns att Fidoco skickar.
+    - Det stämmer med att Fidoco är säljare och kräver bara SPF/DKIM/DMARC för en domän.
+      Att skicka från arrangörens egen domän kräver DKIM per tenant och ligger i TODO.
+    - Koden använder SMTP och är leverantörsneutral. *Rek:* Azure Communication Services Email
+      (samma Azure-faktura, stöder SMTP och egen domän). Postmark är ett alternativ om
+      leveransen blir ett problem. Leverantören är bara konfig och kan väljas vid driftsättning.
+
+### 13b. Kvar att ta ställning till
+
+Fidocos företagsuppgifter (bolagsform, org.nr, momsregistrering) och provisionsnivån för AFN
+behövs först vid driftsättning. Båda är konfiguration och blockerar inte implementationen.
+
+För punkterna nedan gäller min rekommendation om du svarar "ok".
+
 3. **Admininloggning.**
    - *Rek:* e-post + lösenord (eget minimalt, `PasswordHasher`), 2FA i TODO.
    - *Alternativ:* magic link även för admins. Enklare kod, men admin blir beroende av mejl.
@@ -741,7 +821,7 @@ Min rekommendation står först i varje punkt. Om du svarar "ok" gäller rekomme
 5. **Direktinloggning efter köp** via browser-nonce (§8.1). *Rek:* ja. Köparen kan titta direkt
    utan att öppna mejlet på samma enhet, vilket är viktigt när många köper minuterna före start.
 6. **Inloggning före köp?** *Rek:* nej. Stripe samlar in e-posten och kontot skapas vid betalning.
-   Inloggade köpare får e-posten förifylld.
+   Inloggade köpare får e-posten förifylld. Köparen godkänner köpvillkoren i Stripe Checkout.
 7. **Eventstatus vid Mux idle.**
    - *Rek:* automatiskt `Ended` vid idle, tillbaka till `Live` om streamen startar igen.
      `reconnect_window` = 300 s så att korta avbrott i encodern inte avslutar eventet.
@@ -755,31 +835,20 @@ Min rekommendation står först i varje punkt. Om du svarar "ok" gäller rekomme
     - *Rek:* `IFileStorage` med lokal disk. App Service `/home` är beständig och delas mellan
       instanser.
     - Azure Blob-implementation i TODO.
-11. **GDPR-radering av köp.** *Rek:* anonymisera köpet i stället för att radera det. Belopp och
-    datum måste sparas i 7 år enligt bokföringslagen, men kopplingen till personen tas bort.
-    Bekräfta gärna med er rådgivare. Stripe behåller sina egna betalningsuppgifter.
 12. **Mux Data i spelaren.** *Rek:* `disableCookies` och inget tittar-id skickas till Mux. Då
     behövs ingen cookie-banner, och appen sätter bara nödvändiga auth-cookies. Tekniska
     kvalitetsmått utan personkoppling behålls.
-13. **Plattformsdomän och tenant-adresser.**
-    - *Rek:* plattform på t.ex. `admin.fidoco.live` och tenants på egen domän
-      (`stream.afnmma.se`) eller `{slug}.fidoco.live`. Vilken domän äger du?
-    - App Service Managed Certificates stöder inte wildcard. Varje tenant-domän binds därför
-      manuellt i fas 1, och wildcard eller Front Door kommer senare.
-14. **E-postleverantör.**
-    - *Rek:* SMTP (leverantörsneutralt, t.ex. Azure Communication Services Email, Postmark eller
-      Brevo) med avsändare `"<Tenantnamn>" <noreply@<plattformsdomän>>` och tenantens reply-to.
-    - Vilken leverantör, och vilken avsändardomän (SPF/DKIM)?
 15. **SQLite-schema lokalt.**
     - *Rek:* migrationer bara för SQL Server, och SQLite skapas från modellen. Ett CI-test fångar
       glömda migrationer.
     - *Alternativ:* dubbla migrationsuppsättningar (SQL Server + SQLite) per modul. Det ger mer
       underhåll.
-16. **Återbetalning i fas 1.** *Rek:* ja, hantera `charge.refunded` så att åtkomsten dras in.
-    Det är litet och förhindrar att återbetalda köpare kan titta. Själva återbetalningen görs i
-    Stripe Dashboard.
-17. **Kundkonton per tenant** (samma e-post hos två arrangörer = två konton). *Rek:* ja. Det ger
-    tydlig isolering och arrangören som personuppgiftsansvarig.
+16. **Återbetalning i fas 1.** *Rek:* ja, hantera `charge.refunded` så att åtkomsten dras in och
+    köpet räknas bort i avräkningen. Själva återbetalningen görs i Stripe Dashboard.
+17. **Kundkonton per tenant** (samma e-post hos två arrangörer = två konton). *Rek:* ja, för
+    tydlig isolering. Med Fidoco som säljare är Fidoco personuppgiftsansvarig för köpdata.
+    Integritetspolicyn säger det, och arrangören ser bara aggregerade siffror (inga
+    e-postadresser) i fas 1.
 18. **Språk i README, ARCHITECTURE och TODO.**
     - *Rek:* engelska, i linje med koden.
     - PLAN.md är på svenska eftersom den är ett beslutsunderlag för dig.
