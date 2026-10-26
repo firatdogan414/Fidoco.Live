@@ -1,0 +1,57 @@
+{
+  "title": "Fidoco plattform",
+  "nav": {
+    "tenants": "Arrangörer",
+    "settlements": "Avräkning",
+    "logout": "Logga ut"
+  },
+  "tenants": {
+    "title": "Arrangörer",
+    "create": "Ny arrangör",
+    "name": "Namn",
+    "slug": "Kortnamn (blir {{slug}}.fidoco.se)",
+    "supportEmail": "Supportadress (svar på mejl går hit)",
+    "save": "Skapa",
+    "suspended": "Avstängd",
+    "empty": "Inga arrangörer ännu."
+  },
+  "tenant": {
+    "branding": "Profil",
+    "logoUrl": "Logotyp (adress)",
+    "primaryColor": "Huvudfärg",
+    "accentColor": "Accentfärg",
+    "suspend": "Stäng av arrangören",
+    "saveBranding": "Spara profil",
+    "terms": "Affärsvillkor",
+    "termsHelp": "Gäller nya köp. Tidigare köp behåller villkoren de såldes med.",
+    "commissionPercent": "Provision (% av intäkt exkl. moms)",
+    "commissionFixed": "Fast provision per biljett (kr exkl. moms)",
+    "vatRegistered": "Arrangören är momsregistrerad",
+    "saveTerms": "Spara villkor",
+    "domains": "Domäner",
+    "domainsHelp": "Egen domän: peka en CNAME mot appen och lägg till en App Service-bindning med certifikat innan domänen läggs till här.",
+    "host": "Domän",
+    "primary": "Primär",
+    "makePrimary": "Gör primär",
+    "addDomain": "Lägg till domän",
+    "remove": "Ta bort",
+    "admins": "Bjud in administratör",
+    "inviteEmail": "E-post",
+    "invite": "Skicka inbjudan",
+    "invited": "Inbjudan skickad.",
+    "saved": "Sparat."
+  },
+  "settlements": {
+    "title": "Avräkning",
+    "from": "Från",
+    "to": "Till",
+    "tenant": "Arrangör",
+    "event": "Event",
+    "sold": "Sålda",
+    "gross": "Brutto",
+    "fee": "Provision",
+    "invoice": "Arrangören fakturerar",
+    "empty": "Inga köp under perioden.",
+    "total": "Totalt"
+  }
+}

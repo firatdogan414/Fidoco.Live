@@ -18,4 +18,5 @@ public static class DevelopmentSeed
     public const string PlatformHost = "admin.localhost";
     public const string TenantAdminEmail = "admin@afn.local";
     public const string TenantAdminPassword = "Fidoco-dev-123!";
+    public const string PlatformAdminEmail = "admin@fidoco.local";
 }

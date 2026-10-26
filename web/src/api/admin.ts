@@ -116,6 +116,9 @@ export const adminApi = {
   /** Development only: simulate the encoder (fake video provider). */
   simulateStream: (id: string, status: 'active' | 'idle') => request<void>(`/dev/streams/${id}/simulate`, { method: 'POST', body: { status } }),
 
+  users: () => request<{ id: string; email: string; hasPassword: boolean; lastLoginAt: string | null }[]>('/admin/users'),
+  inviteUser: (email: string) => request<void>('/admin/users', { method: 'POST', body: { email } }),
+
   sales: () => request<EventSales[]>('/admin/sales'),
   eventSales: (eventId: string) => request<EventSales>(`/admin/events/${eventId}/sales`),
   settlement: (eventId: string) => request<Settlement>(`/admin/events/${eventId}/settlement`),

@@ -1,7 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useLocation, useNavigate } from 'react-router';
+import { Link, useLocation, useNavigate } from 'react-router';
 import { adminApi } from '../../api/admin';
 import { ErrorMessage } from '../../shared/components';
 import { useErrorText } from '../../shared/errors';
@@ -47,6 +47,9 @@ export function AdminLoginPage() {
             {t('login.submit')}
           </button>
           {login.isError ? <ErrorMessage>{errorText(login.error)}</ErrorMessage> : null}
+          <Link to="/admin/glomt-losenord" className="small">
+            {t('login.forgot')}
+          </Link>
         </form>
       </section>
     </main>

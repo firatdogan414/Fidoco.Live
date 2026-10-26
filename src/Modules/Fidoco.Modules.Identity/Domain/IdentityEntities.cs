@@ -69,3 +69,57 @@ internal sealed class AdminUser : ITenantOwned
 
     public DateTimeOffset? LastLoginAt { get; set; }
 }
+
+/// <summary>The platform owner. Signs in on the platform host only.</summary>
+internal sealed class PlatformAdmin
+{
+    public Guid Id { get; set; }
+
+    public required string Email { get; set; }
+
+    public string? PasswordHash { get; set; }
+
+    public DateTimeOffset CreatedAt { get; set; }
+
+    public DateTimeOffset? LastLoginAt { get; set; }
+}
+
+internal enum AdminKind
+{
+    Tenant,
+    Platform,
+}
+
+internal enum AdminTokenPurpose
+{
+    /// <summary>Invitation: choose a first password (7 days).</summary>
+    Invite,
+
+    /// <summary>Forgotten password (1 hour).</summary>
+    Reset,
+}
+
+/// <summary>
+/// Single-use link token for choosing an admin password. Not tenant-filtered (platform admins have no
+/// tenant): lookups always check <see cref="TenantId"/> explicitly.
+/// </summary>
+internal sealed class AdminToken
+{
+    public Guid Id { get; set; }
+
+    public AdminKind AdminKind { get; set; }
+
+    public Guid AdminId { get; set; }
+
+    public Guid? TenantId { get; set; }
+
+    public required string TokenHash { get; set; }
+
+    public AdminTokenPurpose Purpose { get; set; }
+
+    public DateTimeOffset CreatedAt { get; set; }
+
+    public DateTimeOffset ExpiresAt { get; set; }
+
+    public DateTimeOffset? ConsumedAt { get; set; }
+}

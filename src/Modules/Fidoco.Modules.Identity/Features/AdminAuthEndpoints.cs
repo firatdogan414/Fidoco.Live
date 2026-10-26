@@ -2,6 +2,8 @@ using System.Security.Claims;
 using Fidoco.Contracts.Identity;
 using Fidoco.Modules.Identity.Domain;
 using Fidoco.Modules.Identity.Infrastructure;
+using Fidoco.Modules.Identity.Integration;
+using Fidoco.SharedKernel.Tenancy;
 using Fidoco.SharedKernel.Http;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Builder;
@@ -19,6 +21,14 @@ internal static class AdminAuthEndpoints
 
     public sealed record AdminMeResponse(string Email, string Role);
 
+    public sealed record ResetRequest(string? Email);
+
+    public sealed record SetPasswordRequest(string? Token, string? Password);
+
+    public sealed record InviteRequest(string? Email);
+
+    public sealed record AdminUserDto(Guid Id, string Email, bool HasPassword, DateTimeOffset? LastLoginAt);
+
     public static void Map(IEndpointRouteBuilder api)
     {
         var admin = api.MapGroup("/admin");
@@ -32,6 +42,58 @@ internal static class AdminAuthEndpoints
                 context.User.FindFirstValue(FidocoClaims.Email) ?? "",
                 context.User.FindFirstValue(ClaimTypes.Role) ?? "")))
             .RequireAuthorization(AuthPolicies.TenantAdmin);
+        admin.MapPost("/auth/reset-request", RequestReset).RequireRateLimiting(RateLimitPolicies.Login);
+        admin.MapPost("/auth/set-password", SetPassword).RequireRateLimiting(RateLimitPolicies.Login);
+        admin.MapGet("/users", ListUsers).RequireAuthorization(AuthPolicies.TenantAdmin);
+        admin.MapPost("/users", Invite).RequireAuthorization(AuthPolicies.TenantAdmin);
+    }
+
+    /// <summary>Always 202 so the response does not reveal whether the address is an admin.</summary>
+    private static async Task<IResult> RequestReset(ResetRequest request, HttpContext context, IdentityDbContext db, AdminAccounts accounts, ITenantContext tenant, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(request.Email))
+        {
+            return Results.Accepted();
+        }
+
+        var email = Emails.Normalize(request.Email);
+        var user = await db.AdminUsers.SingleOrDefaultAsync(a => a.Email == email, cancellationToken);
+        if (user is not null)
+        {
+            await accounts.SendPasswordLinkAsync(AdminKind.Tenant, user.Id, tenant.RequiredTenantId, user.Email, AdminTokenPurpose.Reset, context.Request.Host.Host, cancellationToken);
+        }
+
+        return Results.Accepted();
+    }
+
+    private static async Task<IResult> SetPassword(SetPasswordRequest request, AdminAccounts accounts, ITenantContext tenant, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrEmpty(request.Password) || request.Password.Length < AdminAccounts.MinimumPasswordLength)
+        {
+            return new ValidationErrors().Add("password", "password_too_short").ToResult();
+        }
+
+        return await accounts.SetPasswordAsync(AdminKind.Tenant, tenant.RequiredTenantId, request.Token ?? "", request.Password, cancellationToken)
+            ? Results.NoContent()
+            : ApiResults.BadRequest("invalid_or_expired_link");
+    }
+
+    private static async Task<IResult> ListUsers(IdentityDbContext db, CancellationToken cancellationToken) =>
+        Results.Ok(await db.AdminUsers.AsNoTracking()
+            .OrderBy(a => a.Email)
+            .Select(a => new AdminUserDto(a.Id, a.Email, a.PasswordHash != null, a.LastLoginAt))
+            .ToListAsync(cancellationToken));
+
+    private static async Task<IResult> Invite(InviteRequest request, HttpContext context, AdminInvitations invitations, ITenantContext tenant, CancellationToken cancellationToken)
+    {
+        var errors = new ValidationErrors().Email("email", request.Email);
+        if (errors.HasErrors)
+        {
+            return errors.ToResult();
+        }
+
+        var invited = await invitations.InviteTenantAdminAsync(tenant.RequiredTenantId, request.Email!, context.Request.Host.Host, cancellationToken);
+        return invited ? Results.Accepted() : ApiResults.Conflict("admin_exists");
     }
 
     private static async Task<IResult> Login(
@@ -65,15 +127,7 @@ internal static class AdminAuthEndpoints
         user.LastLoginAt = time.GetUtcNow();
         await db.SaveChangesAsync(cancellationToken);
 
-        var identity = new ClaimsIdentity(
-            [
-                new Claim(FidocoClaims.UserId, user.Id.ToString()),
-                new Claim(FidocoClaims.TenantId, user.TenantId.ToString()),
-                new Claim(FidocoClaims.Email, user.Email),
-                new Claim(ClaimTypes.Role, user.Role),
-            ],
-            AuthSchemes.Admin);
-        await context.SignInAsync(AuthSchemes.Admin, new ClaimsPrincipal(identity));
+        await AdminAccounts.SignInAsync(context, user.Id, user.Email, user.Role, user.TenantId);
         return Results.Ok(new AdminMeResponse(user.Email, user.Role));
     }
 }

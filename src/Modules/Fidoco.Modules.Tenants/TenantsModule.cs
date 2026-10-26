@@ -1,4 +1,5 @@
 using Fidoco.Contracts.Tenants;
+using Fidoco.Contracts.Identity;
 using Fidoco.Modules.Tenants.Features;
 using Fidoco.Modules.Tenants.Infrastructure;
 using Fidoco.Modules.Tenants.Integration;
@@ -19,7 +20,8 @@ public static class TenantsModule
         services.AddModuleDbContext<TenantsDbContext>(configuration);
         services.AddOptions<PlatformOptions>().Bind(configuration.GetSection(PlatformOptions.SectionName));
         services.AddMemoryCache();
-        services.AddScoped<ITenantDirectory, TenantDirectory>();
+        services.AddScoped<TenantDirectory>();
+        services.AddScoped<ITenantDirectory>(sp => sp.GetRequiredService<TenantDirectory>());
         services.AddScoped<IDevelopmentSeeder, TenantsDevelopmentSeeder>();
         return services;
     }
@@ -31,6 +33,7 @@ public static class TenantsModule
     public static IEndpointRouteBuilder MapTenantsEndpoints(this IEndpointRouteBuilder api)
     {
         GetCurrentTenant.Map(api);
+        PlatformTenantEndpoints.Map(api);
         return api;
     }
 }

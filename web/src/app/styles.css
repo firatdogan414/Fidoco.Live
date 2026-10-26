@@ -500,3 +500,19 @@ img {
   font-weight: 700;
   border-bottom: none;
 }
+
+.checkbox {
+  flex-direction: row !important;
+  align-items: center;
+  gap: 8px !important;
+}
+
+.table-scroll {
+  overflow-x: auto;
+}
+
+input[type='color'] {
+  padding: 2px;
+  height: 44px;
+  width: 80px;
+}

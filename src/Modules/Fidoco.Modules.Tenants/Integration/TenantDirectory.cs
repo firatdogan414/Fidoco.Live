@@ -42,6 +42,16 @@ internal sealed class TenantDirectory(TenantsDbContext db, IMemoryCache cache) :
             .SingleOrDefaultAsync(cancellationToken)
         ?? throw new InvalidOperationException($"Tenant {tenantId} not found.");
 
+    /// <summary>Drops cached lookups after a change (other instances catch up within the cache duration).</summary>
+    public void Invalidate(Guid tenantId, IEnumerable<string> hosts)
+    {
+        cache.Remove($"tenants:id:{tenantId}");
+        foreach (var host in hosts)
+        {
+            cache.Remove($"tenants:host:{NormalizeHost(host)}");
+        }
+    }
+
     public static string NormalizeHost(string host) => host.Trim().TrimEnd('.').ToLowerInvariant();
 
     private async Task<TenantInfo?> LoadAsync(Guid tenantId, CancellationToken cancellationToken)

@@ -60,6 +60,14 @@
     "invalid_email": "Ogiltig e-postadress.",
     "invalid_slug": "Endast små bokstäver, siffror och bindestreck.",
     "invalid_url": "Ogiltig adress.",
-    "out_of_range": "Ogiltigt värde."
+    "out_of_range": "Ogiltigt värde.",
+    "admin_exists": "Det finns redan en administratör med den e-postadressen.",
+    "password_too_short": "Lösenordet måste vara minst 10 tecken.",
+    "tenant_not_found": "Arrangören finns inte.",
+    "invalid_color": "Ange en färg som #RRGGBB.",
+    "invalid_host": "Ogiltigt domännamn.",
+    "domain_taken": "Domänen används redan.",
+    "domain_not_found": "Domänen finns inte.",
+    "last_domain": "En arrangör måste ha minst en domän."
   }
 }

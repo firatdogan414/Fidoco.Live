@@ -42,9 +42,21 @@ public static class IdentityModule
                 .AddAuthenticationSchemes(AuthSchemes.Admin)
                 .RequireAuthenticatedUser()
                 .RequireRole(Roles.TenantAdmin)
-                .AddRequirements(new TenantMatchRequirement()));
+                .AddRequirements(new TenantMatchRequirement()))
+            .AddPolicy(AuthPolicies.PlatformAdmin, p => p
+                .AddAuthenticationSchemes(AuthSchemes.Admin)
+                .RequireAuthenticatedUser()
+                .RequireRole(Roles.PlatformAdmin)
+                .AddRequirements(new PlatformHostRequirement()));
+        services.AddHttpContextAccessor();
+        services.AddScoped<IAuthorizationHandler, PlatformHostHandler>();
 
         services.AddScoped<IPasswordHasher<AdminUser>, PasswordHasher<AdminUser>>();
+        services.AddScoped<IPasswordHasher<PlatformAdmin>, PasswordHasher<PlatformAdmin>>();
+        services.AddScoped<AdminAccounts>();
+        services.AddScoped<AdminInvitations>();
+        services.AddScoped<IDevelopmentSeeder, PlatformAdminDevelopmentSeeder>();
+        services.AddHostedService<PlatformAdminBootstrap>();
         services.AddScoped<ICustomerAccounts, CustomerAccounts>();
         services.AddScoped<ICustomerLoginLinks, CustomerLoginLinks>();
         services.AddScoped<ICustomerSignIn, CustomerSignIn>();
@@ -56,6 +68,7 @@ public static class IdentityModule
     {
         CustomerAuthEndpoints.Map(api);
         AdminAuthEndpoints.Map(api);
+        PlatformAuthEndpoints.Map(api);
         return api;
     }
 

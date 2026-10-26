@@ -17,6 +17,10 @@ internal sealed class IdentityDbContext(DbContextOptions<IdentityDbContext> opti
 
     public DbSet<AdminUser> AdminUsers => Set<AdminUser>();
 
+    public DbSet<PlatformAdmin> PlatformAdmins => Set<PlatformAdmin>();
+
+    public DbSet<AdminToken> AdminTokens => Set<AdminToken>();
+
     /// <summary>Shared key ring so every instance can read auth cookies.</summary>
     public DbSet<DataProtectionKey> DataProtectionKeys => Set<DataProtectionKey>();
 
@@ -49,6 +53,25 @@ internal sealed class IdentityDbContext(DbContextOptions<IdentityDbContext> opti
             e.HasIndex(a => new { a.TenantId, a.Email }).IsUnique();
             e.Property(a => a.PasswordHash).HasMaxLength(500);
             e.Property(a => a.Role).HasMaxLength(30);
+        });
+
+        modelBuilder.Entity<PlatformAdmin>(e =>
+        {
+            e.ToTable("PlatformAdmins");
+            e.HasKey(a => a.Id);
+            e.Property(a => a.Email).HasMaxLength(254);
+            e.HasIndex(a => a.Email).IsUnique();
+            e.Property(a => a.PasswordHash).HasMaxLength(500);
+        });
+
+        modelBuilder.Entity<AdminToken>(e =>
+        {
+            e.ToTable("AdminTokens");
+            e.HasKey(t => t.Id);
+            e.Property(t => t.TokenHash).HasMaxLength(64);
+            e.HasIndex(t => t.TokenHash).IsUnique();
+            e.Property(t => t.AdminKind).HasConversion<string>().HasMaxLength(20);
+            e.Property(t => t.Purpose).HasConversion<string>().HasMaxLength(20);
         });
 
         modelBuilder.Entity<DataProtectionKey>(e => e.ToTable("DataProtectionKeys"));

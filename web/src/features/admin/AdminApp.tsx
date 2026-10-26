@@ -8,6 +8,8 @@ import { AdminEventPage } from './AdminEventPage';
 import { AdminEventsPage } from './AdminEventsPage';
 import { AdminLoginPage } from './AdminLoginPage';
 import { AdminNewEventPage } from './AdminNewEventPage';
+import { AdminUsersPage } from './AdminUsersPage';
+import { ForgotPasswordPage, SetPasswordPage } from '../shared-auth/PasswordPages';
 import { useAdminMe } from './useAdminMe';
 
 /** The organizer's admin (TenantAdmin) under /admin on the tenant's own host. */
@@ -15,10 +17,13 @@ export function AdminApp() {
   return (
     <Routes>
       <Route path="logga-in" element={<AdminLoginPage />} />
+      <Route path="valj-losenord" element={<SetPasswordPage area="admin" loginPath="/admin/logga-in" />} />
+      <Route path="glomt-losenord" element={<ForgotPasswordPage area="admin" />} />
       <Route element={<RequireAdmin />}>
         <Route index element={<AdminEventsPage />} />
         <Route path="event/ny" element={<AdminNewEventPage />} />
         <Route path="event/:id" element={<AdminEventPage />} />
+        <Route path="anvandare" element={<AdminUsersPage />} />
       </Route>
     </Routes>
   );
@@ -51,6 +56,7 @@ function AdminLayout() {
           </span>
         </Link>
         <nav className="site-nav">
+          <Link to="/admin/anvandare">{t('nav.users')}</Link>
           <Link to="/">{t('nav.viewSite')}</Link>
           <button type="button" className="link-button" onClick={() => void logout()}>
             {t('nav.logout')}

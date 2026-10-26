@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { BrowserRouter, Route, Routes } from 'react-router';
 import { viewerApi } from '../api/viewer';
 import { AdminApp } from '../features/admin/AdminApp';
+import { PlatformApp } from '../features/platform/PlatformApp';
 import { AccountPage } from '../features/viewer/pages/AccountPage';
 import { EventListPage } from '../features/viewer/pages/EventListPage';
 import { EventPage } from '../features/viewer/pages/EventPage';
@@ -51,11 +52,7 @@ function SiteRoutes() {
   }
 
   if (site.data.kind === 'platform' || !site.data.tenant) {
-    return (
-      <main className="page">
-        <h1>Fidoco</h1>
-      </main>
-    );
+    return <PlatformApp />;
   }
 
   return (

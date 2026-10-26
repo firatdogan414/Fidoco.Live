@@ -39,8 +39,45 @@ internal static class SettlementEndpoints
         string Currency,
         bool OrganizerVatRegistered);
 
-    public static void Map(IEndpointRouteBuilder api) =>
+    public sealed record TenantSettlement(Guid TenantId, string TenantName, Settlement Settlement);
+
+    public static void Map(IEndpointRouteBuilder api)
+    {
         api.MapGet("/admin/events/{eventId:guid}/settlement", ForEvent).RequireAuthorization(AuthPolicies.TenantAdmin);
+        api.MapGet("/platform/settlements", ForPlatform).RequireAuthorization(AuthPolicies.PlatformAdmin);
+    }
+
+    /// <summary>All tenants and events with purchases completed in [from, to). Platform owner only.</summary>
+    private static async Task<IResult> ForPlatform(DateTimeOffset? from, DateTimeOffset? to, PaymentsDbContext db, ITenantDirectory tenants, TimeProvider time, CancellationToken cancellationToken)
+    {
+        var until = to ?? time.GetUtcNow().AddDays(1);
+        var since = from ?? until.AddMonths(-1);
+        // Deliberately across tenants (platform view): the only place in Payments that ignores the tenant filter.
+        var rows = await db.PurchaseLines.IgnoreQueryFilters().AsNoTracking()
+            .Join(db.Purchases.IgnoreQueryFilters(), l => l.PurchaseId, p => p.Id, (l, p) => new { Line = l, Purchase = p })
+            .Where(x => x.Purchase.CompletedAt >= since && x.Purchase.CompletedAt < until)
+            .Select(x => new
+            {
+                x.Purchase.TenantId,
+                x.Line.EventId,
+                x.Line.EventTitle,
+                Line = new SettlementLine(x.Purchase.Id, x.Purchase.CompletedAt, x.Purchase.Status, x.Line.Quantity,
+                    x.Line.UnitPrice * x.Line.Quantity, x.Line.UnitPrice * x.Line.Quantity - x.Line.NetAmount, x.Line.NetAmount, x.Line.PlatformFeeAmount, x.Purchase.Currency),
+            })
+            .ToListAsync(cancellationToken);
+
+        var result = new List<TenantSettlement>();
+        foreach (var group in rows.GroupBy(r => (r.TenantId, r.EventId)))
+        {
+            var info = await tenants.GetAsync(group.Key.TenantId, cancellationToken);
+            var terms = await tenants.GetCommercialTermsAsync(group.Key.TenantId, cancellationToken);
+            var summary = new EventSummary(group.Key.EventId, "", group.First().EventTitle, default);
+            result.Add(new TenantSettlement(group.Key.TenantId, info?.Name ?? group.Key.TenantId.ToString(),
+                Calculate(summary, group.Select(g => g.Line).ToList(), terms.OrganizerVatRegistered)));
+        }
+
+        return Results.Ok(result.OrderBy(r => r.TenantName).ThenBy(r => r.Settlement.EventTitle));
+    }
 
     private static async Task<IResult> ForEvent(
         Guid eventId,

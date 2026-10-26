@@ -12,6 +12,9 @@ internal sealed class PlatformOptions
 
     /// <summary>Hosts without a tenant: platform admin and webhooks (e.g. admin.fidoco.se).</summary>
     public List<string> Hosts { get; set; } = [];
+
+    /// <summary>New tenants get "{slug}.{suffix}", e.g. afn.fidoco.se.</summary>
+    public string TenantDomainSuffix { get; set; } = "fidoco.se";
 }
 
 /// <summary>Resolves the tenant from the Host header and sets <see cref="ITenantContext"/> for the request.</summary>
