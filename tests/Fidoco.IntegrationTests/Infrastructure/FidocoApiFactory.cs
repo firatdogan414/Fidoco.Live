@@ -1,3 +1,4 @@
+using Fidoco.Modules.Notifications.Email;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
@@ -47,6 +48,8 @@ public class FidocoApiFactory : WebApplicationFactory<Program>
     /// <summary>Starts at the real current time (Stripe signatures and cookies use wall-clock time).</summary>
     public FakeTimeProvider Time { get; } = new(DateTimeOffset.UtcNow);
 
+    internal CapturingEmailSender Emails { get; } = new();
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Testing");
@@ -59,6 +62,8 @@ public class FidocoApiFactory : WebApplicationFactory<Program>
         {
             services.RemoveAll<TimeProvider>();
             services.AddSingleton<TimeProvider>(Time);
+            services.RemoveAll<IEmailSender>();
+            services.AddSingleton<IEmailSender>(Emails);
             ConfigureFakes(services);
         });
     }

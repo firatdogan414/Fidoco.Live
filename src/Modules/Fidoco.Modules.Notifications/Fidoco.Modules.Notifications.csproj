@@ -3,9 +3,15 @@
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
   </ItemGroup>
   <ItemGroup>
+    <PackageReference Include="MailKit" />
+  </ItemGroup>
+  <ItemGroup>
     <!-- Modules reference only the shared kernel and contracts, never each other. -->
     <ProjectReference Include="..\..\Fidoco.SharedKernel\Fidoco.SharedKernel.csproj" />
     <ProjectReference Include="..\..\Fidoco.Contracts\Fidoco.Contracts.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Templates\*.json" />
   </ItemGroup>
   <ItemGroup>
     <InternalsVisibleTo Include="Fidoco.UnitTests" />
