@@ -1,0 +1,71 @@
+{
+  "events": {
+    "title": "Event",
+    "empty": "Inga event just nu.",
+    "live": "Live nu",
+    "upcoming": "Kommande",
+    "ended": "Avslutat"
+  },
+  "event": {
+    "buy": "Köp – {{price}}",
+    "buying": "Går till betalning …",
+    "watch": "Titta",
+    "watchReplay": "Se reprisen",
+    "includesLive": "Livesändning",
+    "replayDays_one": "Repris i {{count}} dag efter eventet",
+    "replayDays_other": "Repris i {{count}} dagar efter eventet",
+    "noReplay": "Ingen repris",
+    "haveTicket": "Du har en biljett.",
+    "signInToWatch": "Har du redan köpt? Logga in",
+    "oneDevice": "Biljetten gäller en enhet åt gången.",
+    "statusLive": "Live nu",
+    "statusEnded": "Avslutat"
+  },
+  "thanks": {
+    "title": "Tack för ditt köp!",
+    "waiting": "Vi bekräftar din betalning …",
+    "ready": "Allt klart. Du skickas till sändningen …",
+    "checkEmail": "Betalningen är klar. Vi har skickat ett kvitto med en inloggningslänk till din e-post.",
+    "goToWatch": "Gå till sändningen",
+    "expired": "Betalningen avbröts eller gick ut. Inget har dragits.",
+    "slow": "Det tar längre tid än vanligt. Du får ett kvitto via e-post så snart betalningen är bekräftad."
+  },
+  "watch": {
+    "countdownTitle": "Sändningen startar om",
+    "days": "dagar",
+    "hours": "tim",
+    "minutes": "min",
+    "seconds": "sek",
+    "startingSoon": "Sändningen startar snart. Sidan uppdateras automatiskt.",
+    "waitingForSignal": "Väntar på signal från arrangören …",
+    "connecting": "Ansluter …",
+    "reconnecting": "Tappat kontakten, försöker igen …",
+    "replaced": "Din biljett används nu på en annan enhet.",
+    "replacedHelp": "En biljett kan användas på en enhet åt gången.",
+    "watchHere": "Titta här i stället",
+    "ended": "Sändningen är slut.",
+    "replayComing": "Reprisen förbereds och dyker upp här snart.",
+    "noTicket": "Du har ingen biljett till det här eventet.",
+    "buyTicket": "Köp biljett",
+    "signInRequired": "Logga in för att titta.",
+    "replayBadge": "Repris",
+    "liveBadge": "Live",
+    "devPlayer": "Testläge: ingen riktig video (Mux är inte konfigurerat)."
+  },
+  "login": {
+    "title": "Logga in",
+    "intro": "Ange e-postadressen du köpte biljetten med så skickar vi en inloggningslänk.",
+    "email": "E-post",
+    "submit": "Skicka länk",
+    "sent": "Om e-postadressen har ett konto hos oss har vi skickat en inloggningslänk. Kolla din inkorg (och skräpposten).",
+    "verifying": "Loggar in …"
+  },
+  "account": {
+    "title": "Mitt konto",
+    "email": "Inloggad som {{email}}",
+    "purchases": "Mina köp",
+    "noPurchases": "Inga köp ännu.",
+    "refunded": "Återbetald",
+    "watch": "Titta"
+  }
+}

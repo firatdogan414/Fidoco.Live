@@ -16,6 +16,10 @@ export default defineConfig({
       '/hubs': { target: apiTarget, changeOrigin: false, ws: true },
     },
   },
+  build: {
+    // The Mux player chunk is ~1.1 MB and is only loaded on the watch page.
+    chunkSizeWarningLimit: 1300,
+  },
   test: {
     environment: 'node',
     include: ['src/**/*.test.ts'],
