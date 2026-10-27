@@ -184,6 +184,8 @@ Keep the stream key secret: anyone with it can broadcast on the event.
   count as 0 kr in the settlement.
 - Every action is logged (admin, action, buyer, event, time) and shown on the Support page.
 
+See [RUNBOOK.md](RUNBOOK.md) for the event day: scaling, monitoring, "I paid but cannot get in" and outages.
+
 ---
 
 ## Deploy to Azure (App Service + Azure SQL)
