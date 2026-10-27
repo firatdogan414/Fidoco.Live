@@ -207,6 +207,27 @@ public sealed class PlaybackTests(FidocoApiFactory factory) : IClassFixture<Fido
     }
 
     [Fact]
+    public async Task Heartbeat_rate_limit_counts_per_customer_not_per_session_id()
+    {
+        // The session id is chosen by the caller, so partitioning on it gives every made-up id its own budget.
+        await using var strict = new HeartbeatLimitedFactory();
+        var (e, viewer, _) = await strict.LiveEventWithBuyerAsync();
+        var other = strict.ClientFor(e.Tenant.Host);
+        await strict.BuyAsync(other, e.TicketTypeId, $"other-{Guid.NewGuid():N}@example.com");
+
+        var statuses = new List<HttpStatusCode>();
+        for (var i = 0; i < 3; i++)
+        {
+            statuses.Add((await viewer.HeartbeatAsync($"made-up-{i}")).StatusCode);
+        }
+
+        var otherCustomer = await other.HeartbeatAsync("made-up-x");
+
+        Assert.Equal([HttpStatusCode.NotFound, HttpStatusCode.NotFound, HttpStatusCode.TooManyRequests], statuses);
+        Assert.Equal(HttpStatusCode.NotFound, otherCustomer.StatusCode);
+    }
+
+    [Fact]
     public async Task Replay_is_available_after_the_event_until_the_window_closes()
     {
         await using var isolated = new FidocoApiFactory();
@@ -272,4 +293,7 @@ public sealed class PlaybackTests(FidocoApiFactory factory) : IClassFixture<Fido
         var entitlementId = System.Text.Json.JsonDocument.Parse(json!).RootElement.GetProperty("EntitlementId").GetGuid();
         return $"playback:active:{entitlementId}";
     }
+
+    private sealed class HeartbeatLimitedFactory()
+        : FidocoApiFactory("Sqlite", null, new Dictionary<string, string?> { ["RateLimiting:HeartbeatPerMinute"] = "2" });
 }

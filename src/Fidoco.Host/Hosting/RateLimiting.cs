@@ -16,13 +16,14 @@ internal sealed class RateLimitingOptions
 
     public int PlaybackTokenPerMinute { get; set; } = 10;
 
-    /// <summary>Heartbeats come every 30 s; the margin allows retries with backoff.</summary>
+    /// <summary>Per customer. Heartbeats come every 30 s from the one active session; the margin allows retries with backoff.</summary>
     public int HeartbeatPerMinute { get; set; } = 6;
 }
 
 /// <summary>
-/// Per-instance fixed-window limits (in memory). Partitioned by IP for anonymous endpoints, by user for
-/// token requests and by playback session for heartbeats (many viewers can share one IP, e.g. at a pub).
+/// Per-instance fixed-window limits (in memory). Partitioned by IP for anonymous endpoints and by customer for
+/// playback (many viewers can share one IP, e.g. at a pub). Never by a value the caller chooses freely, such
+/// as the session id in the URL: every made-up value would get its own budget (and its own partition).
 /// </summary>
 internal static class RateLimiting
 {
@@ -43,7 +44,7 @@ internal static class RateLimiting
             limiter.AddPolicy(RateLimitPolicies.PlaybackToken, ctx =>
                 PerMinute(ctx.User.FindFirstValue(FidocoClaims.UserId) ?? ClientIp(ctx), options.PlaybackTokenPerMinute));
             limiter.AddPolicy(RateLimitPolicies.Heartbeat, ctx =>
-                PerMinute(ctx.Request.RouteValues["sessionId"]?.ToString() ?? ClientIp(ctx), options.HeartbeatPerMinute));
+                PerMinute(ctx.User.FindFirstValue(FidocoClaims.UserId) ?? ClientIp(ctx), options.HeartbeatPerMinute));
         });
         return services;
     }
