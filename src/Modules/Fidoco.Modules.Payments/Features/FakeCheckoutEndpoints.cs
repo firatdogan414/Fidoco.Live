@@ -13,7 +13,10 @@ namespace Fidoco.Modules.Payments.Features;
 /// </summary>
 internal static class FakeCheckoutEndpoints
 {
-    public sealed record FakePayRequest(string? Email);
+    /// <summary>Any promotion code gives 20 % off, so discounts can be tried without Stripe.</summary>
+    public const decimal FakeDiscountPercent = 20m;
+
+    public sealed record FakePayRequest(string? Email, long Amount, string? PromotionCode);
 
     public static void Map(IEndpointRouteBuilder api)
     {
@@ -28,9 +31,12 @@ internal static class FakeCheckoutEndpoints
                 return errors.ToResult();
             }
 
+            var code = string.IsNullOrWhiteSpace(request.PromotionCode) ? null : request.PromotionCode.Trim().ToUpperInvariant();
+            var discount = code is null ? 0 : (long)Math.Round(request.Amount * FakeDiscountPercent / 100m, MidpointRounding.AwayFromZero);
             await processor.ProcessAsync(
                 new PaymentWebhookEvent($"fake_evt_{Guid.NewGuid():N}", PaymentWebhookType.CheckoutCompleted, sessionId, Paid: true,
-                    PaymentIntentId: $"fake_pi_{Guid.NewGuid():N}", Email: request.Email),
+                    PaymentIntentId: $"fake_pi_{Guid.NewGuid():N}", Email: request.Email, AmountTotal: request.Amount - discount,
+                    AmountDiscount: discount, PromotionCodeId: code),
                 cancellationToken);
             return Results.NoContent();
         });
@@ -46,12 +52,13 @@ internal static class FakeCheckoutEndpoints
             <h1>Fake checkout (utveckling)</h1>
             <p>Belopp: {{amount / 100m:0.00}} kr</p>
             <label>E-post<br><input id="email" type="email" value="{{E(email)}}" style="width:100%;padding:8px"></label>
+            <p><label>Rabattkod (valfri, alla koder ger {{FakeDiscountPercent:0}} %)<br><input id="code" style="width:100%;padding:8px"></label></p>
             <p><button id="pay" style="padding:10px 16px">Betala</button> <a href="{{E(cancel)}}">Avbryt</a></p>
             <script>
             document.getElementById('pay').onclick = async () => {
               const res = await fetch('/api/v1/dev/fake-checkout/{{E(sessionId)}}/pay', {
                 method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Fidoco-Client': 'web' },
-                body: JSON.stringify({ email: document.getElementById('email').value })
+                body: JSON.stringify({ email: document.getElementById('email').value, amount: {{amount}}, promotionCode: document.getElementById('code').value })
               });
               if (res.ok) location.href = {{System.Text.Json.JsonSerializer.Serialize(success)}};
               else alert('Ogiltig e-post');

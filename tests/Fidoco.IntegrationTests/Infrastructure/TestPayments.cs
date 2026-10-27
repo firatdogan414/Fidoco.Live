@@ -13,6 +13,14 @@ internal sealed class TestPaymentGateway : IPaymentGateway
 {
     public ConcurrentDictionary<Guid, (CheckoutRequest Request, string SessionId)> Checkouts { get; } = new();
 
+    /// <summary>Promotion code ids known to the fake Stripe; unknown ids make the lookup fail.</summary>
+    public ConcurrentDictionary<string, string> PromotionCodes { get; } = new();
+
+    public Task<string?> GetPromotionCodeAsync(string promotionCodeId, CancellationToken cancellationToken) =>
+        PromotionCodes.TryGetValue(promotionCodeId, out var code)
+            ? Task.FromResult<string?>(code)
+            : throw new HttpRequestException("Stripe is unavailable");
+
     public Task<CheckoutCreated> CreateCheckoutAsync(CheckoutRequest request, CancellationToken cancellationToken)
     {
         var sessionId = $"cs_test_{Guid.NewGuid():N}";
@@ -45,13 +53,17 @@ internal static class TestPayments
         return (await client.GetFromJsonAsync<CheckoutStatus>($"/api/v1/checkout/{checkout.CheckoutId}"))!;
     }
 
-    public static object SessionObject(string sessionId, string? email, string paymentStatus = "paid", long amount = 19900, string? paymentIntent = null) => new
+    public static object SessionObject(
+        string sessionId, string? email, string paymentStatus = "paid", long amount = 19900, string? paymentIntent = null, long discount = 0, string? promotionCode = null) => new
     {
         id = sessionId,
         @object = "checkout.session",
         payment_status = paymentStatus,
-        payment_intent = paymentIntent ?? "pi_" + sessionId,
+        payment_intent = paymentStatus == "no_payment_required" ? null : paymentIntent ?? "pi_" + sessionId,
+        amount_subtotal = amount + discount,
         amount_total = amount,
+        total_details = new { amount_discount = discount, amount_shipping = 0, amount_tax = 0 },
+        discounts = promotionCode is null ? Array.Empty<object>() : [new { coupon = "coupon_" + promotionCode, promotion_code = promotionCode }],
         currency = "sek",
         customer_details = new { email },
         metadata = new Dictionary<string, string>(),

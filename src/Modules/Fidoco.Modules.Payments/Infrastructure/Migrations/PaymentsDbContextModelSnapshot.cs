@@ -145,6 +145,13 @@ namespace Fidoco.Modules.Payments.Infrastructure.Migrations
                     b.Property<Guid?>("CustomerId")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<long>("DiscountAmount")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("PromotionCode")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
                     b.Property<string>("ProviderPaymentIntentId")
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
@@ -180,6 +187,9 @@ namespace Fidoco.Modules.Payments.Infrastructure.Migrations
                     b.Property<Guid>("Id")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<long>("DiscountAmount")
+                        .HasColumnType("bigint");
+
                     b.Property<Guid>("EventId")
                         .HasColumnType("uniqueidentifier");
 
@@ -187,6 +197,9 @@ namespace Fidoco.Modules.Payments.Infrastructure.Migrations
                         .IsRequired()
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
+
+                    b.Property<long>("GrossAmount")
+                        .HasColumnType("bigint");
 
                     b.Property<bool>("IncludesLive")
                         .HasColumnType("bit");

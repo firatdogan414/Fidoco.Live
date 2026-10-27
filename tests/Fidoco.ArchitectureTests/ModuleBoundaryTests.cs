@@ -29,10 +29,10 @@ public sealed class ModuleBoundaryTests
     }
 
     [Fact]
-    public void All_six_core_modules_are_loaded()
+    public void All_seven_core_modules_are_loaded()
     {
         Assert.Equal(
-            ["Catalog", "Identity", "Notifications", "Payments", "Playback", "Tenants"],
+            ["Catalog", "Identity", "Notifications", "Payments", "Playback", "Support", "Tenants"],
             ModuleAssemblies().Select(a => a.GetName().Name![ModulePrefix.Length..]).Order());
     }
 

@@ -9,6 +9,7 @@ import { AdminEventsPage } from './AdminEventsPage';
 import { AdminLoginPage } from './AdminLoginPage';
 import { AdminNewEventPage } from './AdminNewEventPage';
 import { AdminProfilePage } from './AdminProfilePage';
+import { AdminSupportPage } from './AdminSupportPage';
 import { AdminUsersPage } from './AdminUsersPage';
 import { ForgotPasswordPage, SetPasswordPage } from '../shared-auth/PasswordPages';
 import { useAdminMe } from './useAdminMe';
@@ -25,6 +26,7 @@ export function AdminApp() {
         <Route path="event/ny" element={<AdminNewEventPage />} />
         <Route path="event/:id" element={<AdminEventPage />} />
         <Route path="anvandare" element={<AdminUsersPage />} />
+        <Route path="support" element={<AdminSupportPage />} />
         <Route path="profil" element={<AdminProfilePage />} />
       </Route>
     </Routes>
@@ -58,6 +60,7 @@ function AdminLayout() {
           </span>
         </Link>
         <nav className="site-nav">
+          <Link to="/admin/support">{t('nav.support')}</Link>
           <Link to="/admin/profil">{t('nav.profile')}</Link>
           <Link to="/admin/anvandare">{t('nav.users')}</Link>
           <Link to="/">{t('nav.viewSite')}</Link>

@@ -91,10 +91,16 @@ internal sealed class Purchase : AggregateRoot, ITenantOwned
 
     public PurchaseStatus Status { get; set; } = PurchaseStatus.Completed;
 
-    /// <summary>Total paid including VAT, in minor units.</summary>
+    /// <summary>Total actually paid including VAT (after discounts), in minor units, as charged by Stripe.</summary>
     public long AmountTotal { get; set; }
 
     public long VatAmount { get; set; }
+
+    /// <summary>List price minus what was paid: the discount from a promotion code (0 without one).</summary>
+    public long DiscountAmount { get; set; }
+
+    /// <summary>The promotion code the buyer entered in Stripe Checkout (the code text, or its id if unknown).</summary>
+    public string? PromotionCode { get; set; }
 
     public required string Currency { get; set; }
 
@@ -106,17 +112,26 @@ internal sealed class Purchase : AggregateRoot, ITenantOwned
 
     public List<PurchaseLine> Lines { get; set; } = [];
 
-    public static Purchase Complete(CheckoutSession checkout, Guid customerId, string email, long amountTotal, string? paymentIntentId, DateTimeOffset now)
+    /// <summary>
+    /// Records a paid checkout. Every amount (VAT, net, commission) is based on what Stripe actually charged,
+    /// so a promotion code lowers VAT and commission with the price; the list price is kept on the line.
+    /// </summary>
+    public static Purchase Complete(CheckoutSession checkout, Guid customerId, string email, PaidAmount paid, string? paymentIntentId, DateTimeOffset now)
     {
-        var lineGross = checkout.UnitPrice * checkout.Quantity;
-        var lineNet = lineGross - Vat.Included(lineGross, checkout.VatRatePercent);
+        var listGross = checkout.UnitPrice * checkout.Quantity;
+        var lineGross = paid.Total; // one line per checkout: it carries the whole payment
+        var lineVat = Vat.Included(lineGross, checkout.VatRatePercent);
+        var lineNet = lineGross - lineVat;
+        var discount = Math.Max(0, listGross - lineGross);
         var purchase = new Purchase
         {
             Id = Guid.CreateVersion7(now),
             CheckoutSessionId = checkout.Id,
             CustomerId = customerId,
-            AmountTotal = amountTotal,
-            VatAmount = Vat.Included(amountTotal, checkout.VatRatePercent),
+            AmountTotal = paid.Total,
+            VatAmount = lineVat,
+            DiscountAmount = discount,
+            PromotionCode = paid.PromotionCode,
             Currency = checkout.Currency,
             ProviderPaymentIntentId = paymentIntentId,
             CompletedAt = now,
@@ -134,6 +149,8 @@ internal sealed class Purchase : AggregateRoot, ITenantOwned
             VatRatePercent = checkout.VatRatePercent,
             IncludesLive = checkout.IncludesLive,
             ReplayAccessDays = checkout.ReplayAccessDays,
+            GrossAmount = lineGross,
+            DiscountAmount = discount,
             NetAmount = lineNet,
             PlatformFeeAmount = Commission.Fee(lineNet, checkout.Quantity, checkout.CommissionPercent, checkout.CommissionFixedAmountPerTicket),
         });
@@ -142,7 +159,9 @@ internal sealed class Purchase : AggregateRoot, ITenantOwned
             purchase.Id, customerId, email, now, purchase.AmountTotal, purchase.VatAmount, purchase.Currency,
             purchase.Lines.Select(l => new PurchaseCompletedLine(
                 l.Id, l.EventId, l.EventTitle, l.TicketTypeId, l.TicketTypeName, l.Quantity, l.UnitPrice, l.VatRatePercent,
-                l.IncludesLive, l.ReplayAccessDays)).ToList()));
+                l.IncludesLive, l.ReplayAccessDays)).ToList(),
+            purchase.DiscountAmount,
+            purchase.PromotionCode));
         return purchase;
     }
 
@@ -159,6 +178,9 @@ internal sealed class Purchase : AggregateRoot, ITenantOwned
         return true;
     }
 }
+
+/// <summary>What the payment provider charged: the total including VAT after discounts, and the promotion code used.</summary>
+internal sealed record PaidAmount(long Total, string? PromotionCode = null);
 
 /// <summary>
 /// One bought ticket type. Lines (rather than a single ticket on the purchase) allow selling a physical
@@ -182,7 +204,7 @@ internal sealed class PurchaseLine : ITenantOwned
 
     public int Quantity { get; set; }
 
-    /// <summary>Price per ticket including VAT, in minor units.</summary>
+    /// <summary>List price per ticket including VAT, in minor units.</summary>
     public long UnitPrice { get; set; }
 
     public decimal VatRatePercent { get; set; }
@@ -191,7 +213,13 @@ internal sealed class PurchaseLine : ITenantOwned
 
     public int? ReplayAccessDays { get; set; }
 
-    /// <summary>Line amount excluding VAT, in minor units.</summary>
+    /// <summary>What was actually paid for the line including VAT (list price minus discount), in minor units.</summary>
+    public long GrossAmount { get; set; }
+
+    /// <summary>Discount on the line including VAT (list price × quantity − <see cref="GrossAmount"/>).</summary>
+    public long DiscountAmount { get; set; }
+
+    /// <summary>Line amount actually paid excluding VAT, in minor units.</summary>
     public long NetAmount { get; set; }
 
     /// <summary>Fidoco's commission excluding VAT, computed from the terms at purchase time and never recomputed.</summary>
@@ -206,6 +234,12 @@ internal static class Commission
         var fee = (long)Math.Round(netAmount * percent / 100m, MidpointRounding.AwayFromZero) + fixedPerTicket * quantity;
         return Math.Clamp(fee, 0, netAmount);
     }
+}
+
+internal static class OrderNumbers
+{
+    /// <summary>The order number shown on receipts and in the settlement: the first 12 hex digits of the purchase id.</summary>
+    public static string For(Guid purchaseId) => purchaseId.ToString("N")[..12].ToUpperInvariant();
 }
 
 internal static class Vat

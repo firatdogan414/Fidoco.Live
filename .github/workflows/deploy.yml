@@ -1,0 +1,92 @@
+name: Deploy
+
+# Every green CI run on main is deployed to staging; production follows the same build after a manual
+# approval (required reviewers on the GitHub environment "production"). Azure is reached with OIDC
+# (federated credentials), so no Azure secret is stored in GitHub. One-time setup: README → Deploy to Azure.
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+
+jobs:
+  build:
+    name: Build release
+    # Only pushes to main that passed CI (not pull requests from branches named main in forks).
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: dotnet tool restore
+
+      # Builds the React app into wwwroot as part of the publish (Fidoco.Host.csproj → PublishSpa).
+      - name: Publish app
+        run: |
+          dotnet publish src/Fidoco.Host -c Release -o out/app
+          (cd out/app && zip -qr ../app.zip .)
+
+      # One self-contained migration bundle per module DbContext (each module has its own schema and history).
+      - name: Build migration bundles
+        run: |
+          mkdir -p out/migrations
+          for module in Tenants Identity Catalog Payments Playback Support; do
+            dotnet ef migrations bundle \
+              -p src/Modules/Fidoco.Modules.$module -s src/Fidoco.Host -c ${module}DbContext \
+              -o out/migrations/efbundle-$module --configuration Release
+          done
+
+      - name: Collect release
+        run: |
+          mkdir -p release
+          mv out/app.zip out/migrations release/
+          cp -r infra release/infra
+          echo "${{ github.event.workflow_run.head_sha || github.sha }}" > release/COMMIT
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release
+          path: release
+          retention-days: 14
+
+  staging:
+    name: Staging
+    needs: build
+    uses: ./.github/workflows/deploy-environment.yml
+    with:
+      environment: staging
+    permissions:
+      contents: read
+      id-token: write
+
+  production:
+    name: Production
+    needs: staging
+    uses: ./.github/workflows/deploy-environment.yml
+    with:
+      environment: production
+    permissions:
+      contents: read
+      id-token: write

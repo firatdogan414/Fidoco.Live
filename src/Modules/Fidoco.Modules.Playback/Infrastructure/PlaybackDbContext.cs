@@ -23,6 +23,9 @@ internal sealed class PlaybackDbContext(DbContextOptions<PlaybackDbContext> opti
             e.HasIndex(x => new { x.SourceType, x.SourceId }).IsUnique();
             e.HasIndex(x => new { x.TenantId, x.CustomerId, x.EventId });
             e.Property(x => x.Status).HasConversion<string>().HasMaxLength(20);
+            e.Property(x => x.Note).HasMaxLength(200);
+            e.Property(x => x.GrantedBy).HasMaxLength(254);
+            e.HasIndex(x => new { x.TenantId, x.EventId, x.SourceType });
         });
     }
 }

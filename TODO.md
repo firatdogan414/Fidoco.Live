@@ -13,7 +13,7 @@ Deliberately left for later phases, in the suggested order. Phase 1 (the MVP) is
 4. **More ticket types and access codes**: replay-only, free with registration, access codes. The model already
    has `IncludesLive`, `ReplayAccessDays` and `AccessMode`; entitlements can come from sources other than purchases.
 5. **Clip library**: clips from recordings (Mux asset clipping), public or ticket-gated.
-6. **Discount codes** (Stripe promotion codes or our own, recorded on the purchase line).
+6. **Own discount codes** per tenant in the admin (today: Stripe promotion codes created in the Dashboard).
 7. **Stripe Connect** for payouts to organizers (replaces the manual settlement; self-billing as an intermediate step).
 8. **Invoice payment for B2B** (e.g. corporate tickets).
 9. **Several parallel streams per event** (stages/cameras): the model supports it; add UI, per-stream access
@@ -21,8 +21,8 @@ Deliberately left for later phases, in the suggested order. Phase 1 (the MVP) is
 10. **VAT for more countries**: buyers in other EU countries (OSS, VAT by the buyer's country), Stripe Tax.
 11. **Redis and Azure SignalR when scaling out**: `AddStackExchangeRedisCache`, a Redis `IViewerPresence`
     (sorted set per event), `Azure:SignalR:ConnectionString`; distributed rate limiting if needed.
-12. **Infrastructure as code (Bicep)**: App Service, Azure SQL (DTU), Application Insights, Key Vault,
-    managed certificates, DNS.
+12. **Custom domains in infrastructure as code**: DNS records, host name bindings and managed certificates
+    (App Service, SQL, Application Insights and Key Vault are in `infra/main.bicep` already).
 13. **Physical tickets with capacity**: reservations in `ITicketAvailability` (see ARCHITECTURE.md),
     QR tickets, a scanning app, combined physical + stream orders.
 
@@ -35,7 +35,7 @@ Deliberately left for later phases, in the suggested order. Phase 1 (the MVP) is
 - Automate custom-domain onboarding (DNS check, App Service binding, certificate) from the platform admin.
 - Sending e-mail from the organizer's own domain (per-tenant DKIM).
 - More languages: add `web/src/i18n/locales/<lang>` and `Templates/<lang>.json`; language per customer.
-- Admin: list of buyers per event (support), resend receipt, manual access grants.
+- Admin: list of buyers per event and resending the original receipt (buyer lookup, new login links and comps exist).
 - Load test the token/heartbeat endpoints (target: 2 000 concurrent viewers per instance) before the first large event.
 - Legal review of the terms of purchase and privacy policy drafts (`web/src/i18n/locales/sv/legal.json`).
 

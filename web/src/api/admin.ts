@@ -88,6 +88,81 @@ export interface Settlement {
   organizerInvoiceTotal: number;
   currency: string;
   organizerVatRegistered: boolean;
+  complimentaryTickets: number;
+  discountAmount: number;
+}
+
+export interface SupportCustomer {
+  id: string;
+  email: string;
+  createdAt: string;
+  lastLoginAt: string | null;
+}
+
+export interface SupportPurchase {
+  purchaseId: string;
+  orderNumber: string;
+  eventId: string;
+  eventTitle: string;
+  ticketTypeName: string;
+  quantity: number;
+  amountPaid: number;
+  discountAmount: number;
+  promotionCode: string | null;
+  currency: string;
+  completedAt: string;
+  refunded: boolean;
+}
+
+export interface SupportTicket {
+  entitlementId: string;
+  eventId: string;
+  eventTitle: string;
+  eventSlug: string | null;
+  eventStartsAt: string | null;
+  source: 'purchase' | 'comp' | string;
+  revoked: boolean;
+  includesLive: boolean;
+  replayAccessDays: number | null;
+  createdAt: string;
+  revokedAt: string | null;
+  /** "live" or "replay" when the ticket can be watched right now; otherwise see denyReason. */
+  accessMode: 'live' | 'replay' | null;
+  denyReason: string | null;
+  sessionActive: boolean;
+}
+
+export type SupportAction = 'customerViewed' | 'loginLinkSent' | 'compGranted' | 'compRevoked';
+
+export interface SupportLogEntry {
+  id: string;
+  createdAt: string;
+  adminEmail: string;
+  action: SupportAction;
+  customerId: string | null;
+  customerEmail: string | null;
+  eventId: string | null;
+  eventTitle: string | null;
+  details: string | null;
+}
+
+export interface SupportCustomerDetails {
+  customer: SupportCustomer;
+  purchases: SupportPurchase[];
+  tickets: SupportTicket[];
+  log: SupportLogEntry[];
+}
+
+export interface CompTicket {
+  entitlementId: string;
+  customerId: string;
+  email: string | null;
+  ticketTypeId: string;
+  note: string | null;
+  grantedBy: string | null;
+  grantedAt: string;
+  revoked: boolean;
+  revokedAt: string | null;
 }
 
 export interface AdminMe {
@@ -128,5 +203,16 @@ export const adminApi = {
   eventSales: (eventId: string) => request<EventSales>(`/admin/events/${eventId}/sales`),
   settlement: (eventId: string) => request<Settlement>(`/admin/events/${eventId}/settlement`),
   settlementCsvUrl: (eventId: string) => `/api/v1/admin/events/${eventId}/settlement?format=csv`,
+  searchCustomers: (email: string) => request<SupportCustomer[]>(`/admin/support/customers?email=${encodeURIComponent(email)}`),
+  customerDetails: (id: string) => request<SupportCustomerDetails>(`/admin/support/customers/${id}`),
+  sendLoginLink: (customerId: string, eventId: string | null) =>
+    request<void>(`/admin/support/customers/${customerId}/login-link`, { method: 'POST', body: { eventId } }),
+  supportLog: () => request<SupportLogEntry[]>('/admin/support/log?limit=50'),
+
+  comps: (eventId: string) => request<CompTicket[]>(`/admin/events/${eventId}/comps`),
+  grantComp: (eventId: string, input: { email: string; ticketTypeId: string; note: string | null }) =>
+    request<CompTicket>(`/admin/events/${eventId}/comps`, { method: 'POST', body: input }),
+  revokeComp: (entitlementId: string) => request<CompTicket>(`/admin/comps/${entitlementId}/revoke`, { method: 'POST' }),
+
   viewers: (eventId: string) => request<{ eventId: string; activeViewers: number }>(`/admin/events/${eventId}/viewers`),
 };

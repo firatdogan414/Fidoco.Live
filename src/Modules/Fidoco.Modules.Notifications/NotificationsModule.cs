@@ -1,5 +1,6 @@
 using Fidoco.Contracts.Notifications;
 using Fidoco.Contracts.Payments;
+using Fidoco.Contracts.Playback;
 using Fidoco.Modules.Notifications.Email;
 using Fidoco.Modules.Notifications.Receipts;
 using Fidoco.SharedKernel.Domain;
@@ -27,6 +28,7 @@ public static class NotificationsModule
         services.AddOptions<SellerOptions>().Bind(configuration.GetSection(SellerOptions.SectionName));
         services.AddSingleton<EmailTemplateRenderer>();
         services.AddDomainEventHandler<PurchaseCompleted, PurchaseReceiptHandler>();
+        services.AddDomainEventHandler<ComplimentaryTicketGranted, CompTicketHandler>();
         services.AddScoped<IEmailDispatcher, EmailDispatcher>();
         if (section["Provider"] == "Smtp")
         {

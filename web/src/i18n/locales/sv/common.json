@@ -71,6 +71,10 @@
     "last_domain": "En arrangör måste ha minst en domän.",
     "file_too_large": "Filen är för stor (högst 5 MB).",
     "unsupported_image": "Endast JPG-, PNG- eller WebP-bilder.",
-    "confirmation_mismatch": "E-postadressen stämmer inte."
+    "confirmation_mismatch": "E-postadressen stämmer inte.",
+    "customer_not_found": "Köparen finns inte.",
+    "comp_not_found": "Friplatsen finns inte.",
+    "already_has_access": "Personen har redan en biljett till eventet.",
+    "too_short": "Ange minst 3 tecken."
   }
 }

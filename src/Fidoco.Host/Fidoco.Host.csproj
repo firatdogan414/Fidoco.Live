@@ -12,6 +12,7 @@
     <ProjectReference Include="..\Modules\Fidoco.Modules.Payments\Fidoco.Modules.Payments.csproj" />
     <ProjectReference Include="..\Modules\Fidoco.Modules.Playback\Fidoco.Modules.Playback.csproj" />
     <ProjectReference Include="..\Modules\Fidoco.Modules.Notifications\Fidoco.Modules.Notifications.csproj" />
+    <ProjectReference Include="..\Modules\Fidoco.Modules.Support\Fidoco.Modules.Support.csproj" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design">

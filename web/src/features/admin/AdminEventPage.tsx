@@ -6,6 +6,7 @@ import { adminApi, type AdminEvent, type EventInput } from '../../api/admin';
 import { ErrorMessage, Loading, Notice } from '../../shared/components';
 import { useErrorText } from '../../shared/errors';
 import { formatMoney } from '../../shared/format';
+import { CompsPanel } from './CompsPanel';
 import { EventForm } from './EventForm';
 import { SettlementPanel } from './SettlementPanel';
 import { StreamPanel } from './StreamPanel';
@@ -57,6 +58,7 @@ export function AdminEventPage() {
 
       <Stats event={ev} />
       <StreamPanel event={ev} onChanged={reloadEvent} />
+      {ev.status !== 'draft' ? <CompsPanel event={ev} /> : null}
       {ev.status !== 'draft' ? <SettlementPanel eventId={ev.id} /> : null}
 
       <div className="panel">

@@ -133,7 +133,8 @@ internal static class CheckoutEndpoints
                     email,
                     urls.For(context.Request, $"/e/{ticket.EventSlug}/tack?c={checkout.Id}"),
                     urls.For(context.Request, $"/e/{ticket.EventSlug}"),
-                    expiresAt),
+                    expiresAt,
+                    options.Value.AllowPromotionCodes),
                 cancellationToken);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)

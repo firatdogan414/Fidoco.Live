@@ -12,5 +12,6 @@
     <ProjectReference Include="..\..\src\Modules\Fidoco.Modules.Payments\Fidoco.Modules.Payments.csproj" />
     <ProjectReference Include="..\..\src\Modules\Fidoco.Modules.Playback\Fidoco.Modules.Playback.csproj" />
     <ProjectReference Include="..\..\src\Modules\Fidoco.Modules.Notifications\Fidoco.Modules.Notifications.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Fidoco.Modules.Support\Fidoco.Modules.Support.csproj" />
   </ItemGroup>
 </Project>

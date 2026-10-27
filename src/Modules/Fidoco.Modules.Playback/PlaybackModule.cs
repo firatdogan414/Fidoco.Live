@@ -1,4 +1,5 @@
 using Fidoco.Contracts.Payments;
+using Fidoco.Contracts.Playback;
 using Fidoco.Modules.Playback.Features;
 using Fidoco.Modules.Playback.Infrastructure;
 using Fidoco.Modules.Playback.Integration;
@@ -38,6 +39,8 @@ public static class PlaybackModule
         services.AddSingleton<PlaybackSessionStore>();
         // In memory: exact with one instance. Swap for a Redis implementation when scaling out.
         services.AddSingleton<IViewerPresence, InMemoryViewerPresence>();
+        services.AddScoped<ICustomerTickets, CustomerTickets>();
+        services.AddScoped<IComplimentaryTickets, ComplimentaryTickets>();
         services.AddDomainEventHandler<PurchaseCompleted, GrantEntitlementsOnPurchase>();
         services.AddDomainEventHandler<PurchaseRefunded, RevokeEntitlementsOnRefund>();
         services.AddDomainEventHandler<Fidoco.Contracts.Identity.CustomerDeleted, DeleteEntitlementsOnCustomerDeleted>();

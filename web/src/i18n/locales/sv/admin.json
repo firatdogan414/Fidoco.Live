@@ -12,7 +12,8 @@
     "viewSite": "Visa webbplatsen",
     "logout": "Logga ut",
     "users": "Administratörer",
-    "profile": "Profil"
+    "profile": "Profil",
+    "support": "Support"
   },
   "events": {
     "title": "Event",
@@ -52,7 +53,7 @@
     "stats": "Försäljning och tittare",
     "ticketsSold": "Sålda biljetter",
     "refunded": "Återbetalda",
-    "revenue": "Intäkt inkl. moms",
+    "revenue": "Intäkt inkl. moms (efter rabatter)",
     "viewers": "Tittar just nu"
   },
   "stream": {
@@ -85,8 +86,8 @@
   },
   "settlement": {
     "title": "Avräkning",
-    "help": "Fidoco säljer biljetterna och redovisar momsen. Du fakturerar Fidoco för din andel enligt avräkningen. Återbetalda köp räknas inte.",
-    "gross": "Försäljning inkl. moms",
+    "help": "Fidoco säljer biljetterna och redovisar momsen. Du fakturerar Fidoco för din andel enligt avräkningen. Beloppen är vad köparna faktiskt betalade. Återbetalda köp räknas inte och friplatser räknas som 0 kr.",
+    "gross": "Betalt inkl. moms",
     "vat": "Moms (redovisas av Fidoco)",
     "net": "Netto exkl. moms",
     "fee": "Fidocos provision",
@@ -94,7 +95,10 @@
     "organizerVat": "Moms på din faktura (25 %)",
     "notVatRegistered": "Ej momsregistrerad",
     "invoiceTotal": "Att fakturera Fidoco",
-    "download": "Ladda ner CSV"
+    "download": "Ladda ner CSV",
+    "comps": "Friplatser",
+    "compsValue": "{{count}} st · 0 kr",
+    "discounts": "Rabatter (kampanjkoder, inkl. moms)"
   },
   "password": {
     "setTitle": "Välj lösenord",
@@ -137,5 +141,65 @@
     "erase": "Radera",
     "confirm": "Radera köparens uppgifter? Det går inte att ångra.",
     "done": "Klart. Om adressen hade ett konto är uppgifterna raderade."
+  },
+  "support": {
+    "title": "Support",
+    "help": "Sök köparen på e-postadressen (eller en del av den). Du ser köp, biljetter och om någon tittar just nu, och kan skicka en ny inloggningslänk. Allt du gör här loggas.",
+    "searchLabel": "Köparens e-post",
+    "search": "Sök",
+    "noResults": "Ingen köpare hittades. Kontrollera stavningen eller sök på en del av adressen. Finns betalningen i Stripe men inte här har betalningsbekräftelsen inte kommit fram – se driftrutinen.",
+    "selected": "Visas",
+    "customerSince": "Kund sedan",
+    "lastLogin": "senast inloggad",
+    "neverLoggedIn": "har aldrig loggat in med länk",
+    "sendLink": "Skicka ny inloggningslänk",
+    "sendLinkToEvent": "Skicka länk till eventet",
+    "linkSent": "En ny inloggningslänk är skickad till {{email}}. Den gäller i 24 timmar och kan användas en gång.",
+    "tickets": "Biljetter",
+    "noTickets": "Inga biljetter.",
+    "sourcePurchase": "Köp",
+    "sourceComp": "Friplats",
+    "watchingNow": "Tittar nu",
+    "purchases": "Köp",
+    "noPurchases": "Inga köp.",
+    "order": "Order",
+    "paid": "Betald",
+    "refunded": "Återbetald",
+    "customerLog": "Supportåtgärder för köparen",
+    "log": "Senaste supportåtgärder",
+    "erasedCustomer": "(raderad köpare)",
+    "access": {
+      "live": "Kan titta på livesändningen nu.",
+      "replay": "Kan titta på reprisen nu.",
+      "not_started": "Giltig. Sändningen har inte startat.",
+      "live_not_included": "Giltig för repris, inte live.",
+      "no_replay": "Giltig, men gäller inte repris.",
+      "replay_not_ready": "Giltig. Reprisen är inte klar ännu.",
+      "access_expired": "Har gått ut.",
+      "no_ticket": "Ger ingen åtkomst.",
+      "event_not_found": "Eventet finns inte längre.",
+      "revoked": "Återbetald – ger ingen åtkomst.",
+      "revokedComp": "Indragen friplats – ger ingen åtkomst."
+    },
+    "actions": {
+      "customerViewed": "Visade köparen",
+      "loginLinkSent": "Skickade inloggningslänk",
+      "compGranted": "Gav friplats",
+      "compRevoked": "Drog in friplats"
+    },
+    "discount": "rabattkod {{code}} (−{{amount}})"
+  },
+  "comps": {
+    "title": "Friplatser ({{count}})",
+    "help": "Ge en person tillgång till eventet utan att betala. Personen får ett mejl med en inloggningslänk. Friplatser räknas inte som sålda och är 0 kr i avräkningen.",
+    "email": "E-post",
+    "note": "Anteckning (t.ex. Press, Sponsor)",
+    "grant": "Ge friplats",
+    "granted": "Friplatsen är skapad och mejlet skickas.",
+    "grantedBy": "Av {{admin}} {{date}}",
+    "revokedAt": "indragen {{date}}",
+    "revoked": "Indragen",
+    "revoke": "Dra in",
+    "revokeConfirm": "Dra in friplatsen för {{email}}? Pågående tittande stoppas."
   }
 }
