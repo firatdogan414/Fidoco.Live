@@ -40,6 +40,7 @@ npm run dev
 Development helpers (only with the fake providers, never in production):
 
 - **Fake checkout**: "Köp" opens a local payment page; paying runs the same webhook processing as Stripe.
+  Any discount code typed there gives 20 % off.
 - **E-mails** (receipts, login links, invitations) are logged and saved as HTML in `src/Fidoco.Host/App_Data/emails/`.
 - **Simulated encoder**: on an event's admin page, "Starta signal"/"Stoppa signal" makes the stream active/idle,
   so live → ended → replay can be tried without Mux. The player shows a placeholder for fake playback ids.
@@ -92,6 +93,7 @@ environment variables (`Section__Key`, e.g. `Stripe__SecretKey`). Never put secr
 | `PublicUrls:Template` | Absolute link template, `https://{host}` in production |
 | `Stripe:SecretKey`, `Stripe:WebhookSecret` | Stripe API key and webhook signing secret |
 | `Payments:Provider` | `Stripe` (or `Fake` in Development only) |
+| `Payments:AllowPromotionCodes` | Shows the promotion code field in Stripe Checkout (default `true`) |
 | `Mux:TokenId`, `Mux:TokenSecret` | Mux API access token (Mux Video read/write) |
 | `Mux:WebhookSecret` | Mux webhook signing secret |
 | `Mux:SigningKeyId`, `Mux:SigningKeyPrivate` | Mux signing key for signed playback (base64 private key as Mux returns it) |
@@ -123,6 +125,13 @@ The app refuses to start outside Development with fake providers or missing Mux 
    **Swish** is enabled in the Dashboard (when available for the account) without code changes.
 4. **Terms**: Settings → Checkout: link to `https://<tenant host>/kopvillkor` if you require consent.
 5. **Refunds** are made in the Dashboard; the `charge.refunded` webhook revokes the buyer's access.
+6. **Discount codes**: Product catalog → Coupons → *Create coupon* (percent or amount off, SEK, "Once"),
+   then *Add promotion code* with the code buyers type (e.g. `VIP50`), optionally limited in redemptions
+   and validity. Checkout shows "Lägg till kampanjkod" (`Payments:AllowPromotionCodes`, default `true`).
+   Fidoco books what Stripe actually charged: the purchase, VAT (on the discounted price), commission,
+   sales figures and settlement all use the amount paid, the receipt shows the discount, and the code is
+   listed per order in the settlement CSV. A 100 % code completes without payment and still gives access.
+   Do not use Stripe Tax or shipping: the amount charged is treated as the price including Swedish VAT.
 
 Locally with real Stripe test mode (instead of the fake provider): set `Payments:Provider=Stripe` and the
 keys, then forward webhooks with the Stripe CLI:

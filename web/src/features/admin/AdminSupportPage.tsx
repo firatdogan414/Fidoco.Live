@@ -138,6 +138,9 @@ function CustomerPanel({ customerId }: { customerId: string }) {
                     {p.eventTitle} – {p.ticketTypeName}
                     <div className="small muted">
                       {t('support.order')} {p.orderNumber} · {formatShortDate(p.completedAt)}
+                      {p.discountAmount > 0
+                        ? ` · ${t('support.discount', { code: p.promotionCode ?? '–', amount: formatMoney(p.discountAmount, p.currency) })}`
+                        : ''}
                     </div>
                   </th>
                   <td>{formatMoney(p.amountPaid, p.currency)}</td>

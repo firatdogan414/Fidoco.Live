@@ -53,7 +53,7 @@
     "stats": "Försäljning och tittare",
     "ticketsSold": "Sålda biljetter",
     "refunded": "Återbetalda",
-    "revenue": "Intäkt inkl. moms",
+    "revenue": "Intäkt inkl. moms (efter rabatter)",
     "viewers": "Tittar just nu"
   },
   "stream": {
@@ -87,7 +87,7 @@
   "settlement": {
     "title": "Avräkning",
     "help": "Fidoco säljer biljetterna och redovisar momsen. Du fakturerar Fidoco för din andel enligt avräkningen. Beloppen är vad köparna faktiskt betalade. Återbetalda köp räknas inte och friplatser räknas som 0 kr.",
-    "gross": "Försäljning inkl. moms",
+    "gross": "Betalt inkl. moms",
     "vat": "Moms (redovisas av Fidoco)",
     "net": "Netto exkl. moms",
     "fee": "Fidocos provision",
@@ -97,7 +97,8 @@
     "invoiceTotal": "Att fakturera Fidoco",
     "download": "Ladda ner CSV",
     "comps": "Friplatser",
-    "compsValue": "{{count}} st · 0 kr"
+    "compsValue": "{{count}} st · 0 kr",
+    "discounts": "Rabatter (kampanjkoder, inkl. moms)"
   },
   "password": {
     "setTitle": "Välj lösenord",
@@ -185,7 +186,8 @@
       "loginLinkSent": "Skickade inloggningslänk",
       "compGranted": "Gav friplats",
       "compRevoked": "Drog in friplats"
-    }
+    },
+    "discount": "rabattkod {{code}} (−{{amount}})"
   },
   "comps": {
     "title": "Friplatser ({{count}})",

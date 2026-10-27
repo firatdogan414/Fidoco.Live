@@ -27,6 +27,7 @@ export function SettlementPanel({ eventId }: { eventId: string }) {
       <table className="settlement">
         <tbody>
           <tr><th>{t('settlement.comps')}</th><td>{s ? t('settlement.compsValue', { count: s.complimentaryTickets }) : '–'}</td></tr>
+          <tr><th>{t('settlement.discounts')}</th><td>{money(s?.discountAmount)}</td></tr>
           <tr><th>{t('settlement.gross')}</th><td>{money(s?.grossAmount)}</td></tr>
           <tr><th>{t('settlement.vat')}</th><td>{money(s?.vatAmount)}</td></tr>
           <tr><th>{t('settlement.net')}</th><td>{money(s?.netAmount)}</td></tr>

@@ -89,6 +89,7 @@ export interface Settlement {
   currency: string;
   organizerVatRegistered: boolean;
   complimentaryTickets: number;
+  discountAmount: number;
 }
 
 export interface SupportCustomer {
@@ -106,6 +107,8 @@ export interface SupportPurchase {
   ticketTypeName: string;
   quantity: number;
   amountPaid: number;
+  discountAmount: number;
+  promotionCode: string | null;
   currency: string;
   completedAt: string;
   refunded: boolean;

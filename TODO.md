@@ -13,7 +13,7 @@ Deliberately left for later phases, in the suggested order. Phase 1 (the MVP) is
 4. **More ticket types and access codes**: replay-only, free with registration, access codes. The model already
    has `IncludesLive`, `ReplayAccessDays` and `AccessMode`; entitlements can come from sources other than purchases.
 5. **Clip library**: clips from recordings (Mux asset clipping), public or ticket-gated.
-6. **Discount codes** (Stripe promotion codes or our own, recorded on the purchase line).
+6. **Own discount codes** per tenant in the admin (today: Stripe promotion codes created in the Dashboard).
 7. **Stripe Connect** for payouts to organizers (replaces the manual settlement; self-billing as an intermediate step).
 8. **Invoice payment for B2B** (e.g. corporate tickets).
 9. **Several parallel streams per event** (stages/cameras): the model supports it; add UI, per-stream access
