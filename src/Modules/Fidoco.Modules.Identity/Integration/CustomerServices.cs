@@ -13,13 +13,13 @@ namespace Fidoco.Modules.Identity.Integration;
 
 internal sealed class CustomerAccounts(IdentityDbContext db, TimeProvider time) : ICustomerAccounts
 {
-    public async Task<CustomerAccount> GetOrCreateAsync(string email, CancellationToken cancellationToken)
+    public async Task<Guid> GetOrCreateAsync(string email, CancellationToken cancellationToken)
     {
         var normalized = Emails.Normalize(email);
         var existing = await FindIdAsync(normalized, cancellationToken);
         if (existing is not null)
         {
-            return new CustomerAccount(existing.Value, Created: false);
+            return existing.Value;
         }
 
         var customer = new Customer { Id = Guid.CreateVersion7(), Email = normalized, CreatedAt = time.GetUtcNow() };
@@ -27,14 +27,13 @@ internal sealed class CustomerAccounts(IdentityDbContext db, TimeProvider time) 
         try
         {
             await db.SaveChangesAsync(cancellationToken);
-            return new CustomerAccount(customer.Id, Created: true);
+            return customer.Id;
         }
         catch (DbUpdateException)
         {
             // Created concurrently (unique index on tenant + email): use the winner.
             db.Entry(customer).State = EntityState.Detached;
-            var winner = await FindIdAsync(normalized, cancellationToken) ?? throw new InvalidOperationException("Customer could not be created.");
-            return new CustomerAccount(winner, Created: false);
+            return await FindIdAsync(normalized, cancellationToken) ?? throw new InvalidOperationException("Customer could not be created.");
         }
     }
 
@@ -82,12 +81,21 @@ internal sealed class CustomerSignIn(ITenantContext tenantContext) : ICustomerSi
 {
     public static string VerifyPath(string token) => $"/auth/verifiera?token={Uri.EscapeDataString(token)}";
 
-    public Task SignInAsync(HttpContext context, Guid customerId, CancellationToken cancellationToken)
+    public Task SignInAsync(HttpContext context, Guid customerId, CancellationToken cancellationToken) =>
+        SignInAsync(context, customerId, []);
+
+    public Task SignInForPurchaseAsync(HttpContext context, Guid customerId, IReadOnlyList<Guid> purchaseLineIds, CancellationToken cancellationToken) =>
+        purchaseLineIds.Count == 0
+            ? throw new ArgumentException("A purchase session needs at least one purchase line.", nameof(purchaseLineIds))
+            : SignInAsync(context, customerId, purchaseLineIds.Select(id => new Claim(FidocoClaims.PurchaseLine, id.ToString())));
+
+    private Task SignInAsync(HttpContext context, Guid customerId, IEnumerable<Claim> scope)
     {
         var identity = new ClaimsIdentity(
             [
                 new Claim(FidocoClaims.UserId, customerId.ToString()),
                 new Claim(FidocoClaims.TenantId, tenantContext.RequiredTenantId.ToString()),
+                .. scope,
             ],
             AuthSchemes.Customer);
         return context.SignInAsync(AuthSchemes.Customer, new ClaimsPrincipal(identity), new AuthenticationProperties { IsPersistent = true });

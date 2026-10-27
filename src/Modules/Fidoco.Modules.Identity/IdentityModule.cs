@@ -37,6 +37,12 @@ public static class IdentityModule
                 .AddAuthenticationSchemes(AuthSchemes.Customer)
                 .RequireAuthenticatedUser()
                 .RequireClaim(FidocoClaims.UserId)
+                .RequireAssertion(c => c.User.GetPurchaseLineScope() is null)
+                .AddRequirements(new TenantMatchRequirement()))
+            .AddPolicy(AuthPolicies.Viewer, p => p
+                .AddAuthenticationSchemes(AuthSchemes.Customer)
+                .RequireAuthenticatedUser()
+                .RequireClaim(FidocoClaims.UserId)
                 .AddRequirements(new TenantMatchRequirement()))
             .AddPolicy(AuthPolicies.TenantAdmin, p => p
                 .AddAuthenticationSchemes(AuthSchemes.Admin)

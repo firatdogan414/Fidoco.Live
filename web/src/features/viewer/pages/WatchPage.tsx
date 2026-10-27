@@ -12,7 +12,7 @@ import { countdown, formatEventDate } from '../../../shared/format';
 import { useNow } from '../../../shared/hooks';
 import type { PlaybackState } from '../playback/PlaybackSessionController';
 import { usePlaybackSession } from '../playback/usePlaybackSession';
-import { useMe } from '../useMe';
+import { useViewerSession } from '../useViewerSession';
 
 /** Status is polled every 15 s (cached server-side) so the page switches to live by itself. */
 const statusPollMs = 15_000;
@@ -21,7 +21,7 @@ export function WatchPage() {
   const { slug = '' } = useParams();
   const { t } = useTranslation('viewer');
   const errorText = useErrorText();
-  const me = useMe();
+  const session = useViewerSession();
   const event = useQuery({ queryKey: ['event', slug], queryFn: () => viewerApi.event(slug) });
   const status = useQuery({
     queryKey: ['event-status', slug],
@@ -31,11 +31,11 @@ export function WatchPage() {
   });
 
   const playable = isPlayable(status.data);
-  const playback = usePlaybackSession(event.data?.id, playable && !!me.data);
+  const playback = usePlaybackSession(event.data?.id, playable && !!session.data);
 
-  if (event.isPending || me.isPending) return <Loading />;
+  if (event.isPending || session.isPending) return <Loading />;
   if (event.isError) return <ErrorMessage>{errorText(event.error)}</ErrorMessage>;
-  if (!me.data) return <Navigate to={`/logga-in?returnPath=${encodeURIComponent(`/e/${slug}/titta`)}`} replace />;
+  if (!session.data) return <Navigate to={`/logga-in?returnPath=${encodeURIComponent(`/e/${slug}/titta`)}`} replace />;
 
   const ev = event.data;
   const current = status.data;

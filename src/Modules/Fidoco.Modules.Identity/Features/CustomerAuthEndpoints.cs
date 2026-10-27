@@ -26,6 +26,9 @@ internal static class CustomerAuthEndpoints
 
     public sealed record MeResponse(string Email);
 
+    /// <summary>"account" (magic link) or "purchase" (direct sign-in after a checkout: watching only).</summary>
+    public sealed record SessionResponse(string Scope);
+
     public static void Map(IEndpointRouteBuilder api)
     {
         api.MapPost("/auth/magic-link", RequestMagicLink).RequireRateLimiting(RateLimitPolicies.Login);
@@ -36,6 +39,9 @@ internal static class CustomerAuthEndpoints
             return Results.NoContent();
         });
         api.MapGet("/me", GetMe).RequireAuthorization(AuthPolicies.Customer);
+        api.MapGet("/auth/session", (HttpContext context) =>
+                Results.Ok(new SessionResponse(context.User.GetPurchaseLineScope() is null ? "account" : "purchase")))
+            .RequireAuthorization(AuthPolicies.Viewer);
     }
 
     /// <summary>Always 202 so the response does not reveal whether an account exists.</summary>

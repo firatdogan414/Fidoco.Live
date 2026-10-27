@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using System.Security.Cryptography;
 using Fidoco.Contracts.Catalog;
 using Fidoco.Contracts.Identity;
@@ -38,9 +39,9 @@ internal static class PlaybackEndpoints
     {
         api.MapGet("/events/{eventId:guid}/access", GetAccess);
         api.MapPost("/events/{eventId:guid}/playback-sessions", StartSession)
-            .RequireAuthorization(AuthPolicies.Customer).RequireRateLimiting(RateLimitPolicies.PlaybackToken);
+            .RequireAuthorization(AuthPolicies.Viewer).RequireRateLimiting(RateLimitPolicies.PlaybackToken);
 
-        var sessions = api.MapGroup("/playback-sessions/{sessionId}").RequireAuthorization(AuthPolicies.Customer);
+        var sessions = api.MapGroup("/playback-sessions/{sessionId}").RequireAuthorization(AuthPolicies.Viewer);
         sessions.MapPost("/heartbeat", Heartbeat).RequireRateLimiting(RateLimitPolicies.Heartbeat);
         sessions.MapPost("/tokens", RefreshTokens).RequireRateLimiting(RateLimitPolicies.PlaybackToken);
         sessions.MapPost("/end", EndSession);
@@ -57,12 +58,12 @@ internal static class PlaybackEndpoints
             return ApiResults.NotFound("event_not_found");
         }
 
-        if (context.User.GetCustomerId() is not { } customerId)
+        if (context.User.GetViewerCustomerId() is not { } customerId)
         {
             return Results.Ok(new AccessResponse(false, null, "not_signed_in"));
         }
 
-        var entitlement = await FindEntitlementAsync(db, customerId, eventId, cancellationToken);
+        var entitlement = await FindEntitlementAsync(db, context.User, customerId, eventId, cancellationToken);
         var decision = AccessPolicy.Evaluate(entitlement, info, time.GetUtcNow());
         return Results.Ok(new AccessResponse(entitlement is not null, Mode(decision.Mode), decision.DenyReason));
     }
@@ -88,7 +89,7 @@ internal static class PlaybackEndpoints
 
         var customerId = context.User.GetRequiredUserId();
         var now = time.GetUtcNow();
-        var entitlement = await FindEntitlementAsync(db, customerId, eventId, cancellationToken);
+        var entitlement = await FindEntitlementAsync(db, context.User, customerId, eventId, cancellationToken);
         var decision = AccessPolicy.Evaluate(entitlement, info, now);
         if (!decision.Allowed)
         {
@@ -170,6 +171,11 @@ internal static class PlaybackEndpoints
 
         var info = await catalog.GetPlaybackInfoAsync(session.EventId, cancellationToken);
         var entitlement = await db.Entitlements.AsNoTracking().SingleOrDefaultAsync(e => e.Id == session.EntitlementId, cancellationToken);
+        if (entitlement is not null && !InScope(context.User, entitlement))
+        {
+            entitlement = null;
+        }
+
         var decision = info is null ? AccessDecision.Deny("no_ticket") : AccessPolicy.Evaluate(entitlement, info, now);
         if (!decision.Allowed)
         {
@@ -243,12 +249,25 @@ internal static class PlaybackEndpoints
             : null;
     }
 
-    private static Task<Entitlement?> FindEntitlementAsync(PlaybackDbContext db, Guid customerId, Guid eventId, CancellationToken cancellationToken) =>
-        db.Entitlements.AsNoTracking()
-            .Where(e => e.CustomerId == customerId && e.EventId == eventId && e.Status == EntitlementStatus.Active)
+    /// <summary>The best active ticket for the event; a session limited to a purchase only sees that purchase's tickets.</summary>
+    private static Task<Entitlement?> FindEntitlementAsync(PlaybackDbContext db, ClaimsPrincipal user, Guid customerId, Guid eventId, CancellationToken cancellationToken)
+    {
+        var query = db.Entitlements.AsNoTracking()
+            .Where(e => e.CustomerId == customerId && e.EventId == eventId && e.Status == EntitlementStatus.Active);
+        if (user.GetPurchaseLineScope() is { } scope)
+        {
+            query = query.Where(e => e.SourceType == Entitlement.PurchaseSource && scope.Contains(e.SourceId));
+        }
+
+        return query
             .OrderByDescending(e => e.IncludesLive)
             .ThenByDescending(e => e.ReplayAccessDays)
             .FirstOrDefaultAsync(cancellationToken);
+    }
+
+    private static bool InScope(ClaimsPrincipal user, Entitlement entitlement) =>
+        user.GetPurchaseLineScope() is not { } scope
+        || (entitlement.SourceType == Entitlement.PurchaseSource && scope.Contains(entitlement.SourceId));
 
     private static string? Mode(PlaybackMode? mode) => mode?.ToString().ToLowerInvariant();
 

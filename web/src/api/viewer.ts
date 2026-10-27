@@ -11,6 +11,7 @@ import type {
   PlaybackSession,
   TenantResponse,
   TokenRefresh,
+  ViewerSession,
 } from './types';
 
 export const viewerApi = {
@@ -25,6 +26,7 @@ export const viewerApi = {
   verify: (token: string) => request<{ returnPath: string }>('/auth/verify', { method: 'POST', body: { token } }),
   logout: () => request<void>('/auth/logout', { method: 'POST' }),
   me: () => request<Me>('/me'),
+  session: () => request<ViewerSession>('/auth/session'),
   deleteAccount: (confirmEmail: string) => request<void>('/me', { method: 'DELETE', body: { confirmEmail } }),
   myPurchases: () => request<MyPurchase[]>('/me/purchases'),
 
