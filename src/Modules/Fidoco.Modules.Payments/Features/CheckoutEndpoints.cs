@@ -13,6 +13,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -51,6 +52,7 @@ internal static class CheckoutEndpoints
         ITenantDirectory tenants,
         PublicUrls urls,
         IOptions<PaymentsOptions> options,
+        IHostEnvironment environment,
         TimeProvider time,
         ILoggerFactory loggers,
         CancellationToken cancellationToken)
@@ -152,7 +154,8 @@ internal static class CheckoutEndpoints
         context.Response.Cookies.Append(NonceCookie, nonce, new CookieOptions
         {
             HttpOnly = true,
-            Secure = context.Request.IsHttps,
+            // TLS usually ends at the load balancer, so the request scheme says nothing outside Development.
+            Secure = !environment.IsDevelopment() || context.Request.IsHttps,
             SameSite = SameSiteMode.Lax,
             Path = "/api/v1/checkout",
             MaxAge = TimeSpan.FromHours(2),
@@ -165,6 +168,7 @@ internal static class CheckoutEndpoints
         HttpContext context,
         PaymentsDbContext db,
         ICustomerSignIn signIn,
+        IHostEnvironment environment,
         TimeProvider time,
         CancellationToken cancellationToken)
     {
@@ -194,7 +198,11 @@ internal static class CheckoutEndpoints
             // The e-mail typed on the payment page is unverified, so this browser may only watch what it paid
             // for. Account access (purchases, e-mail, erasure) needs the magic link sent to that address.
             await signIn.SignInForPurchaseAsync(context, customerId, lineIds, cancellationToken);
-            context.Response.Cookies.Delete(NonceCookie, new CookieOptions { Path = "/api/v1/checkout" });
+            context.Response.Cookies.Delete(NonceCookie, new CookieOptions
+            {
+                Path = "/api/v1/checkout",
+                Secure = !environment.IsDevelopment() || context.Request.IsHttps,
+            });
             signedIn = true;
         }
 

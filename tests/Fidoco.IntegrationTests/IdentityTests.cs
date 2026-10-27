@@ -9,6 +9,45 @@ public sealed class IdentityTests(FidocoApiFactory factory) : IClassFixture<Fido
     private sealed record Me(string Email);
 
     [Fact]
+    public async Task Auth_and_checkout_cookies_are_secure_outside_development_even_behind_a_plain_http_hop()
+    {
+        // Behind a TLS-terminating proxy without forwarded headers the app sees plain HTTP.
+        var e = await factory.CreatePublishedEventAsync();
+        var email = $"secure-{Guid.NewGuid():N}@example.com";
+        await factory.CreateCustomerAsync(e.Tenant, email);
+        await factory.CreateTenantAdminAsync(e.Tenant, email, "Secure-pass-1");
+        var http = PlainHttpClient(e.Tenant.Host);
+
+        var token = await factory.RequestLoginTokenAsync(http, email);
+        var customer = await http.PostAsJsonAsync("/api/v1/auth/verify", new { token });
+        var admin = await http.PostAsJsonAsync("/api/v1/admin/auth/login", new { email, password = "Secure-pass-1" });
+        var checkout = await http.PostAsJsonAsync("/api/v1/checkout", new { ticketTypeId = e.TicketTypeId });
+
+        AssertSecureCookie(customer, "fidoco.customer");
+        AssertSecureCookie(admin, "fidoco.admin");
+        AssertSecureCookie(checkout, "fidoco.checkout");
+    }
+
+    private HttpClient PlainHttpClient(string host)
+    {
+        var client = factory.CreateClient(new Microsoft.AspNetCore.Mvc.Testing.WebApplicationFactoryClientOptions
+        {
+            BaseAddress = new Uri($"http://{host}"),
+            HandleCookies = false,
+            AllowAutoRedirect = false,
+        });
+        client.DefaultRequestHeaders.Add("X-Fidoco-Client", "web");
+        return client;
+    }
+
+    private static void AssertSecureCookie(HttpResponseMessage response, string name)
+    {
+        Assert.True(response.IsSuccessStatusCode, $"{response.StatusCode} for {name}");
+        var cookie = Assert.Single(response.Headers.GetValues("Set-Cookie"), c => c.StartsWith(name + "=", StringComparison.Ordinal));
+        Assert.Contains("secure", cookie, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     public async Task Customer_signs_in_with_magic_link()
     {
         var tenant = await factory.CreateTenantAsync();
