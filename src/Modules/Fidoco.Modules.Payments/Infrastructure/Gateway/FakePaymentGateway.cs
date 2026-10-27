@@ -12,4 +12,7 @@ internal sealed class FakePaymentGateway : IPaymentGateway
         var query = $"success={Uri.EscapeDataString(request.SuccessUrl)}&cancel={Uri.EscapeDataString(request.CancelUrl)}&email={Uri.EscapeDataString(request.CustomerEmail ?? "")}&amount={request.UnitAmount * request.Quantity}";
         return Task.FromResult(new CheckoutCreated(sessionId, $"/api/v1/dev/fake-checkout/{sessionId}?{query}"));
     }
+
+    /// <summary>The fake checkout page sends the typed code itself as the id.</summary>
+    public Task<string?> GetPromotionCodeAsync(string promotionCodeId, CancellationToken cancellationToken) => Task.FromResult<string?>(promotionCodeId);
 }

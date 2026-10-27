@@ -10,7 +10,8 @@ internal sealed record CheckoutRequest(
     string? CustomerEmail,
     string SuccessUrl,
     string CancelUrl,
-    DateTimeOffset ExpiresAt);
+    DateTimeOffset ExpiresAt,
+    bool AllowPromotionCodes);
 
 internal sealed record CheckoutCreated(string ProviderSessionId, string RedirectUrl);
 
@@ -18,6 +19,9 @@ internal sealed record CheckoutCreated(string ProviderSessionId, string Redirect
 internal interface IPaymentGateway
 {
     Task<CheckoutCreated> CreateCheckoutAsync(CheckoutRequest request, CancellationToken cancellationToken);
+
+    /// <summary>The code a buyer typed (e.g. "VIP50") for a promotion code id; webhooks only carry the id.</summary>
+    Task<string?> GetPromotionCodeAsync(string promotionCodeId, CancellationToken cancellationToken);
 }
 
 internal enum PaymentWebhookType
@@ -30,7 +34,10 @@ internal enum PaymentWebhookType
     Ignored,
 }
 
-/// <summary>Provider-neutral view of a payment webhook.</summary>
+/// <summary>
+/// Provider-neutral view of a payment webhook. <see cref="AmountTotal"/> is what was charged after discounts,
+/// <see cref="AmountDiscount"/> the discount the provider applied and <see cref="PromotionCodeId"/> the code used.
+/// </summary>
 internal sealed record PaymentWebhookEvent(
     string EventId,
     PaymentWebhookType Type,
@@ -39,7 +46,9 @@ internal sealed record PaymentWebhookEvent(
     string? PaymentIntentId = null,
     string? Email = null,
     long? AmountTotal = null,
-    bool FullyRefunded = false);
+    bool FullyRefunded = false,
+    long? AmountDiscount = null,
+    string? PromotionCodeId = null);
 
 internal sealed class InvalidWebhookSignatureException(string message, Exception? inner = null) : Exception(message, inner);
 
@@ -58,6 +67,12 @@ internal sealed class PaymentsOptions
 
     /// <summary>How long a checkout (and a future capacity reservation) is held. Stripe's minimum is 30 minutes.</summary>
     public TimeSpan CheckoutLifetime { get; set; } = TimeSpan.FromMinutes(30);
+
+    /// <summary>
+    /// Shows the promotion code field in Stripe Checkout. Codes are created in the Stripe Dashboard
+    /// (Products → Coupons → promotion codes); purchases record what was actually paid.
+    /// </summary>
+    public bool AllowPromotionCodes { get; set; } = true;
 }
 
 internal sealed class StripeOptions

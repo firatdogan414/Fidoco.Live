@@ -28,7 +28,7 @@ internal static class PurchaseQueryEndpoints
         var purchases = await db.Purchases.AsNoTracking()
             .Where(p => p.CustomerId == customerId)
             .SelectMany(p => p.Lines, (p, l) => new MyPurchase(
-                p.Id, l.EventId, l.EventTitle, l.TicketTypeName, l.UnitPrice * l.Quantity, p.Currency, p.CompletedAt,
+                p.Id, l.EventId, l.EventTitle, l.TicketTypeName, l.GrossAmount, p.Currency, p.CompletedAt,
                 p.Status == PurchaseStatus.Refunded ? "refunded" : "completed"))
             .ToListAsync(cancellationToken);
         return Results.Ok(purchases.OrderByDescending(p => p.CompletedAt));
@@ -43,12 +43,12 @@ internal static class PurchaseQueryEndpoints
         return Results.Ok(sales.SingleOrDefault() ?? new EventSales(eventId, 0, 0, 0, "SEK"));
     }
 
-    /// <summary>Gross revenue including VAT of completed (not refunded) purchases.</summary>
+    /// <summary>Gross revenue including VAT actually paid (after discounts) for completed (not refunded) purchases.</summary>
     private static async Task<List<EventSales>> SalesQuery(PaymentsDbContext db, Guid? eventId, CancellationToken cancellationToken)
     {
         var lines = await db.PurchaseLines.AsNoTracking()
             .Where(l => eventId == null || l.EventId == eventId)
-            .Join(db.Purchases, l => l.PurchaseId, p => p.Id, (l, p) => new { l.EventId, l.Quantity, l.UnitPrice, p.Status, p.Currency })
+            .Join(db.Purchases, l => l.PurchaseId, p => p.Id, (l, p) => new { l.EventId, l.Quantity, l.GrossAmount, p.Status, p.Currency })
             .ToListAsync(cancellationToken);
 
         return lines
@@ -57,7 +57,7 @@ internal static class PurchaseQueryEndpoints
                 g.Key,
                 g.Where(l => l.Status == PurchaseStatus.Completed).Sum(l => l.Quantity),
                 g.Where(l => l.Status == PurchaseStatus.Refunded).Sum(l => l.Quantity),
-                g.Where(l => l.Status == PurchaseStatus.Completed).Sum(l => l.UnitPrice * l.Quantity),
+                g.Where(l => l.Status == PurchaseStatus.Completed).Sum(l => l.GrossAmount),
                 g.First().Currency))
             .ToList();
     }

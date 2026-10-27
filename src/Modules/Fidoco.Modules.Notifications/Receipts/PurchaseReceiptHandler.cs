@@ -52,6 +52,14 @@ internal sealed class PurchaseReceiptHandler(
             rows.Add(new EmailRow($"{quantity}{l.EventTitle} – {l.TicketTypeName}", Money(l.UnitPrice * l.Quantity)));
         }
 
+        if (purchase.DiscountAmount > 0)
+        {
+            var discount = purchase.PromotionCode is { } code
+                ? Label("discountWithCode", new Dictionary<string, string> { ["code"] = code })
+                : Label("discount");
+            rows.Add(new EmailRow(discount, "−" + Money(purchase.DiscountAmount)));
+        }
+
         var rate = purchase.Lines[0].VatRatePercent.ToString("0.##", Swedish);
         rows.Add(new EmailRow(Label("vat", new Dictionary<string, string> { ["rate"] = rate }), Money(purchase.VatAmount)));
         rows.Add(new EmailRow(Label("total"), Money(purchase.AmountTotal), Emphasize: true));

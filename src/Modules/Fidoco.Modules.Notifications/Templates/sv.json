@@ -16,6 +16,8 @@
     "intro": "Här är ditt kvitto för {eventTitle}.",
     "button": "Titta på sändningen",
     "outro": "Knappen loggar in dig direkt. Biljetten kan användas på en enhet åt gången.",
+    "discount": "Rabatt",
+    "discountWithCode": "Rabatt ({code})",
     "vat": "Varav moms {rate} %",
     "total": "Totalt",
     "seller": "Säljare",

@@ -20,6 +20,7 @@ internal sealed class PaymentWebhookProcessor(
     ITenantContext tenant,
     ICustomerAccounts customers,
     ITicketAvailability availability,
+    IPaymentGateway gateway,
     TimeProvider time,
     ILogger<PaymentWebhookProcessor> logger)
 {
@@ -88,16 +89,21 @@ internal sealed class PaymentWebhookProcessor(
             throw new InvalidOperationException($"Paid checkout {checkout.Id} has no customer e-mail.");
         }
 
-        var expected = checkout.UnitPrice * checkout.Quantity;
-        var amount = webhook.AmountTotal ?? expected;
-        if (amount != expected)
+        // The purchase is booked at what Stripe charged, which is below the list price when a promotion code was used.
+        var listPrice = checkout.UnitPrice * checkout.Quantity;
+        var amount = webhook.AmountTotal ?? listPrice;
+        var discount = webhook.AmountDiscount ?? 0;
+        if (amount + discount != listPrice)
         {
-            logger.LogWarning("Checkout {CheckoutId} paid {Amount} but expected {Expected}", checkout.Id, amount, expected);
+            logger.LogWarning(
+                "Checkout {CheckoutId} paid {Amount} with discount {Discount} but the list price is {ListPrice}; booking the amount paid",
+                checkout.Id, amount, discount, listPrice);
         }
 
+        var promotionCode = webhook.PromotionCodeId is { } promotionCodeId ? await PromotionCodeAsync(promotionCodeId, cancellationToken) : null;
         var customerId = checkout.CustomerId ?? await customers.GetOrCreateAsync(email, cancellationToken);
         var now = time.GetUtcNow();
-        var purchase = Purchase.Complete(checkout, customerId, email.Trim(), amount, webhook.PaymentIntentId, now);
+        var purchase = Purchase.Complete(checkout, customerId, email.Trim(), new PaidAmount(amount, promotionCode), webhook.PaymentIntentId, now);
         db.Purchases.Add(purchase);
         checkout.Status = CheckoutStatus.Completed;
         checkout.CompletedAt = now;
@@ -111,6 +117,20 @@ internal sealed class PaymentWebhookProcessor(
         if (await SaveAsync(cancellationToken))
         {
             FidocoTelemetry.PurchasesCompleted.Add(1);
+        }
+    }
+
+    /// <summary>The code text for reports; the id when Stripe cannot be asked right now (never fails the payment).</summary>
+    private async Task<string> PromotionCodeAsync(string promotionCodeId, CancellationToken cancellationToken)
+    {
+        try
+        {
+            return await gateway.GetPromotionCodeAsync(promotionCodeId, cancellationToken) ?? promotionCodeId;
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            logger.LogWarning(ex, "Could not look up promotion code {PromotionCodeId}; storing the id", promotionCodeId);
+            return promotionCodeId;
         }
     }
 

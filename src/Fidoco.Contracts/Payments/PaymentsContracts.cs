@@ -15,7 +15,11 @@ public sealed record PurchaseCompletedLine(
     bool IncludesLive,
     int? ReplayAccessDays);
 
-/// <summary>Raised when a payment is confirmed. Playback grants access; Notifications sends the receipt.</summary>
+/// <summary>
+/// Raised when a payment is confirmed. Playback grants access; Notifications sends the receipt.
+/// <see cref="AmountTotal"/> and <see cref="VatAmount"/> are what was actually paid; lines carry list prices and
+/// <see cref="DiscountAmount"/> is the difference (from <see cref="PromotionCode"/>).
+/// </summary>
 public sealed record PurchaseCompleted(
     Guid PurchaseId,
     Guid CustomerId,
@@ -24,7 +28,9 @@ public sealed record PurchaseCompleted(
     long AmountTotal,
     long VatAmount,
     string Currency,
-    IReadOnlyList<PurchaseCompletedLine> Lines) : IDomainEvent;
+    IReadOnlyList<PurchaseCompletedLine> Lines,
+    long DiscountAmount = 0,
+    string? PromotionCode = null) : IDomainEvent;
 
 /// <summary>Raised when a purchase is fully refunded; access is revoked.</summary>
 public sealed record PurchaseRefunded(Guid PurchaseId, IReadOnlyList<Guid> PurchaseLineIds) : IDomainEvent;
@@ -39,6 +45,8 @@ public sealed record CustomerPurchaseLine(
     string TicketTypeName,
     int Quantity,
     long AmountPaid,
+    long DiscountAmount,
+    string? PromotionCode,
     string Currency,
     DateTimeOffset CompletedAt,
     bool Refunded);

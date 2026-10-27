@@ -27,7 +27,7 @@ internal static class CustomerSupportEndpoints
 
     public sealed record PurchaseDto(
         Guid PurchaseId, string OrderNumber, Guid EventId, string EventTitle, string TicketTypeName, int Quantity, long AmountPaid,
-        string Currency, DateTimeOffset CompletedAt, bool Refunded);
+        long DiscountAmount, string? PromotionCode, string Currency, DateTimeOffset CompletedAt, bool Refunded);
 
     public sealed record TicketDto(
         Guid EntitlementId, Guid EventId, string EventTitle, string? EventSlug, DateTimeOffset? EventStartsAt, string Source, bool Revoked,
@@ -100,7 +100,8 @@ internal static class CustomerSupportEndpoints
         return Results.Ok(new CustomerDetails(
             new CustomerDto(customer.Id, customer.Email, customer.CreatedAt, customer.LastLoginAt),
             bought.Select(p => new PurchaseDto(
-                p.PurchaseId, p.OrderNumber, p.EventId, p.EventTitle, p.TicketTypeName, p.Quantity, p.AmountPaid, p.Currency, p.CompletedAt, p.Refunded)).ToList(),
+                p.PurchaseId, p.OrderNumber, p.EventId, p.EventTitle, p.TicketTypeName, p.Quantity, p.AmountPaid, p.DiscountAmount, p.PromotionCode,
+                p.Currency, p.CompletedAt, p.Refunded)).ToList(),
             access.Select(a =>
             {
                 var ev = events[a.EventId];

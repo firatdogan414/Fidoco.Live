@@ -47,6 +47,7 @@ internal sealed class PaymentsDbContext(DbContextOptions<PaymentsDbContext> opti
             e.Property(x => x.Status).HasConversion<string>().HasMaxLength(20);
             e.Property(x => x.Currency).HasMaxLength(3);
             e.Property(x => x.ProviderPaymentIntentId).HasMaxLength(200);
+            e.Property(x => x.PromotionCode).HasMaxLength(100);
             e.HasIndex(x => x.ProviderPaymentIntentId);
             e.HasMany(x => x.Lines).WithOne().HasForeignKey(l => l.PurchaseId);
         });

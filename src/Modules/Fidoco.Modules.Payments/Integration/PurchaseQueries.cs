@@ -20,7 +20,7 @@ internal sealed class PurchaseQueries(PaymentsDbContext db) : IPurchaseQueries
             .OrderByDescending(x => x.Purchase.CompletedAt)
             .Select(x => new CustomerPurchaseLine(
                 x.Purchase.Id, x.Line.Id, OrderNumbers.For(x.Purchase.Id), x.Line.EventId, x.Line.EventTitle, x.Line.TicketTypeName,
-                x.Line.Quantity, x.Line.UnitPrice * x.Line.Quantity, x.Purchase.Currency, x.Purchase.CompletedAt,
+                x.Line.Quantity, x.Line.GrossAmount, x.Line.DiscountAmount, x.Purchase.PromotionCode, x.Purchase.Currency, x.Purchase.CompletedAt,
                 x.Purchase.Status == PurchaseStatus.Refunded))
             .ToList();
     }

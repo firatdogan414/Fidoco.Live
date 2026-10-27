@@ -17,7 +17,8 @@ namespace Fidoco.Modules.Payments.Features;
 
 /// <summary>
 /// Settlement between Fidoco (seller) and the organizer: per event, revenue excluding VAT minus Fidoco's
-/// commission is the organizer's share, which the organizer invoices Fidoco for. Refunded purchases count
+/// commission is the organizer's share, which the organizer invoices Fidoco for. All amounts are what buyers
+/// actually paid: a promotion code lowers revenue, VAT and commission alike. Refunded purchases count
 /// for nobody. Complimentary tickets (friplatser) are listed but count as 0 kr. Stripe fees are Fidoco's
 /// cost (covered by the commission).
 /// </summary>
@@ -32,6 +33,7 @@ internal static class SettlementEndpoints
         int TicketsSold,
         int TicketsRefunded,
         int ComplimentaryTickets,
+        long DiscountAmount,
         long GrossAmount,
         long VatAmount,
         long NetAmount,
@@ -73,7 +75,8 @@ internal static class SettlementEndpoints
                 x.Line.EventId,
                 x.Line.EventTitle,
                 Line = new SettlementLine(x.Purchase.Id, x.Purchase.CompletedAt, x.Purchase.Status, x.Line.Quantity,
-                    x.Line.UnitPrice * x.Line.Quantity, x.Line.UnitPrice * x.Line.Quantity - x.Line.NetAmount, x.Line.NetAmount, x.Line.PlatformFeeAmount, x.Purchase.Currency),
+                    x.Line.GrossAmount, x.Line.GrossAmount - x.Line.NetAmount, x.Line.NetAmount, x.Line.PlatformFeeAmount, x.Line.DiscountAmount,
+                    x.Purchase.PromotionCode, x.Purchase.Currency),
             })
             .ToListAsync(cancellationToken);
 
@@ -123,13 +126,17 @@ internal static class SettlementEndpoints
             : Results.Ok(settlement);
     }
 
-    internal sealed record SettlementLine(Guid PurchaseId, DateTimeOffset CompletedAt, PurchaseStatus Status, int Quantity, long Gross, long Vat, long Net, long Fee, string Currency);
+    /// <summary>Gross is what was paid including VAT; Discount is the list price minus that.</summary>
+    internal sealed record SettlementLine(
+        Guid PurchaseId, DateTimeOffset CompletedAt, PurchaseStatus Status, int Quantity, long Gross, long Vat, long Net, long Fee, long Discount,
+        string? PromotionCode, string Currency);
 
     internal static async Task<List<SettlementLine>> LinesAsync(PaymentsDbContext db, Guid eventId, CancellationToken cancellationToken) =>
         (await db.PurchaseLines.AsNoTracking()
             .Where(l => l.EventId == eventId)
             .Join(db.Purchases, l => l.PurchaseId, p => p.Id, (l, p) => new SettlementLine(
-                p.Id, p.CompletedAt, p.Status, l.Quantity, l.UnitPrice * l.Quantity, l.UnitPrice * l.Quantity - l.NetAmount, l.NetAmount, l.PlatformFeeAmount, p.Currency))
+                p.Id, p.CompletedAt, p.Status, l.Quantity, l.GrossAmount, l.GrossAmount - l.NetAmount, l.NetAmount, l.PlatformFeeAmount, l.DiscountAmount,
+                p.PromotionCode, p.Currency))
             .ToListAsync(cancellationToken))
         .OrderBy(l => l.CompletedAt)
         .ToList();
@@ -147,6 +154,7 @@ internal static class SettlementEndpoints
             counted.Sum(l => l.Quantity),
             lines.Where(l => l.Status == PurchaseStatus.Refunded).Sum(l => l.Quantity),
             complimentaryTickets,
+            counted.Sum(l => l.Discount),
             counted.Sum(l => l.Gross),
             counted.Sum(l => l.Vat),
             net,
@@ -162,7 +170,7 @@ internal static class SettlementEndpoints
     {
         static string M(long minor) => (minor / 100m).ToString("0.00", CultureInfo.InvariantCulture);
         var csv = new StringBuilder();
-        csv.AppendLine("Ordernummer;Datum;Status;Antal;Brutto inkl moms;Moms;Netto exkl moms;Fidocos provision;Arrangörens andel exkl moms");
+        csv.AppendLine("Ordernummer;Datum;Status;Antal;Betalt inkl moms;Moms;Netto exkl moms;Fidocos provision;Arrangörens andel exkl moms;Rabatt inkl moms;Rabattkod");
         foreach (var l in lines)
         {
             var counted = l.Status == PurchaseStatus.Completed;
@@ -171,18 +179,30 @@ internal static class SettlementEndpoints
                 l.CompletedAt.ToString("yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture),
                 counted ? "Genomfört" : "Återbetalt",
                 l.Quantity,
-                M(l.Gross), M(l.Vat), M(l.Net), M(counted ? l.Fee : 0), M(counted ? l.Net - l.Fee : 0)));
+                M(l.Gross), M(l.Vat), M(l.Net), M(counted ? l.Fee : 0), M(counted ? l.Net - l.Fee : 0), M(l.Discount), Csv(l.PromotionCode)));
         }
 
         if (s.ComplimentaryTickets > 0)
         {
-            csv.AppendLine($"Friplatser;;Kostnadsfria;{s.ComplimentaryTickets};{M(0)};{M(0)};{M(0)};{M(0)};{M(0)}");
+            csv.AppendLine($"Friplatser;;Kostnadsfria;{s.ComplimentaryTickets};{M(0)};{M(0)};{M(0)};{M(0)};{M(0)};;");
         }
 
         csv.AppendLine();
-        csv.AppendLine($"Summa;;;{s.TicketsSold};{M(s.GrossAmount)};{M(s.VatAmount)};{M(s.NetAmount)};{M(s.PlatformFee)};{M(s.OrganizerShare)}");
+        csv.AppendLine($"Summa;;;{s.TicketsSold};{M(s.GrossAmount)};{M(s.VatAmount)};{M(s.NetAmount)};{M(s.PlatformFee)};{M(s.OrganizerShare)};{M(s.DiscountAmount)};");
         csv.AppendLine($"Arrangörens moms ({(s.OrganizerVatRegistered ? "25 %" : "ej momsregistrerad")});;;;;;;;{M(s.OrganizerVat)}");
         csv.AppendLine($"Att fakturera Fidoco;;;;;;;;{M(s.OrganizerInvoiceTotal)}");
         return csv.ToString();
+    }
+
+    /// <summary>Promotion codes are typed by the organizer in Stripe: keep them from breaking columns or starting a formula.</summary>
+    private static string Csv(string? value)
+    {
+        if (string.IsNullOrEmpty(value))
+        {
+            return "";
+        }
+
+        var cleaned = value.Replace(";", " ", StringComparison.Ordinal).Replace("\"", "", StringComparison.Ordinal).ReplaceLineEndings(" ");
+        return cleaned[0] is '=' or '+' or '-' or '@' ? "'" + cleaned : cleaned;
     }
 }
