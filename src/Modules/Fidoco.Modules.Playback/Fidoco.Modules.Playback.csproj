@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.IdentityModel.JsonWebTokens" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- Modules reference only the shared kernel and contracts, never each other. -->
+    <ProjectReference Include="..\..\Fidoco.SharedKernel\Fidoco.SharedKernel.csproj" />
+    <ProjectReference Include="..\..\Fidoco.Contracts\Fidoco.Contracts.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="Fidoco.UnitTests" />
+    <InternalsVisibleTo Include="Fidoco.IntegrationTests" />
+  </ItemGroup>
+</Project>

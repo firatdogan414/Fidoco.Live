@@ -1,0 +1,141 @@
+{
+  "title": "Admin",
+  "login": {
+    "title": "Logga in som administratör",
+    "email": "E-post",
+    "password": "Lösenord",
+    "submit": "Logga in",
+    "forgot": "Glömt lösenordet?"
+  },
+  "nav": {
+    "events": "Event",
+    "viewSite": "Visa webbplatsen",
+    "logout": "Logga ut",
+    "users": "Administratörer",
+    "profile": "Profil"
+  },
+  "events": {
+    "title": "Event",
+    "new": "Nytt event",
+    "empty": "Inga event ännu.",
+    "sold": "Sålda",
+    "revenue": "Intäkt",
+    "starts": "Start"
+  },
+  "status": {
+    "draft": "Utkast",
+    "scheduled": "Publicerat",
+    "live": "Live",
+    "ended": "Avslutat"
+  },
+  "form": {
+    "newTitle": "Nytt event",
+    "editTitle": "Redigera event",
+    "title": "Titel",
+    "slug": "Adress (lämna tomt för att skapa från titeln)",
+    "description": "Beskrivning",
+    "imageUrl": "Bild (adress)",
+    "startsAt": "Starttid",
+    "ticketName": "Biljettnamn",
+    "price": "Pris inkl. moms (kr)",
+    "replayDays": "Repris (antal dagar efter eventet, tomt = ingen repris)",
+    "save": "Spara",
+    "saved": "Sparat.",
+    "invalidPrice": "Ange ett pris, minst 3 kr."
+  },
+  "detail": {
+    "publish": "Publicera",
+    "publishHelp": "Eventet syns på webbplatsen och biljetter kan köpas.",
+    "end": "Avsluta eventet",
+    "endConfirm": "Avsluta eventet nu? Tittarna ser då att sändningen är slut.",
+    "publicPage": "Visa eventsidan",
+    "stats": "Försäljning och tittare",
+    "ticketsSold": "Sålda biljetter",
+    "refunded": "Återbetalda",
+    "revenue": "Intäkt inkl. moms",
+    "viewers": "Tittar just nu"
+  },
+  "stream": {
+    "title": "Sändning",
+    "create": "Skapa sändning",
+    "createHelp": "Skapar en livesändning hos Mux. Du får en serveradress och en strömnyckel att klistra in i vMix eller OBS.",
+    "status": "Status",
+    "statusActive": "Tar emot signal",
+    "statusIdle": "Ingen signal",
+    "statusDisabled": "Avstängd",
+    "statusUnknown": "Okänd",
+    "statusStored": "(senast kända)",
+    "server": "Server (RTMP)",
+    "serverSecure": "Server (RTMPS, krypterad)",
+    "streamKey": "Strömnyckel",
+    "show": "Visa",
+    "hide": "Dölj",
+    "copy": "Kopiera",
+    "copied": "Kopierat!",
+    "resetKey": "Byt strömnyckel",
+    "resetConfirm": "Byta strömnyckel? Produktionsprogramvaran måste uppdateras med den nya nyckeln.",
+    "help": "I vMix: Add Output → Stream → Custom RTMP Server. I OBS: Inställningar → Ström → Tjänst: Anpassad. Klistra in server och strömnyckel. Håll nyckeln hemlig.",
+    "recordings": "Inspelningar för repris",
+    "noRecordings": "Inga inspelningar ännu. De skapas automatiskt när sändningen pågår.",
+    "primary": "Används för repris",
+    "usePrimary": "Använd för repris",
+    "simulate": "Testläge: simulera signal",
+    "simulateStart": "Starta signal",
+    "simulateStop": "Stoppa signal"
+  },
+  "settlement": {
+    "title": "Avräkning",
+    "help": "Fidoco säljer biljetterna och redovisar momsen. Du fakturerar Fidoco för din andel enligt avräkningen. Återbetalda köp räknas inte.",
+    "gross": "Försäljning inkl. moms",
+    "vat": "Moms (redovisas av Fidoco)",
+    "net": "Netto exkl. moms",
+    "fee": "Fidocos provision",
+    "share": "Din andel exkl. moms",
+    "organizerVat": "Moms på din faktura (25 %)",
+    "notVatRegistered": "Ej momsregistrerad",
+    "invoiceTotal": "Att fakturera Fidoco",
+    "download": "Ladda ner CSV"
+  },
+  "password": {
+    "setTitle": "Välj lösenord",
+    "newPassword": "Nytt lösenord (minst 10 tecken)",
+    "save": "Spara lösenord",
+    "done": "Lösenordet är sparat. Du kan nu logga in.",
+    "toLogin": "Till inloggningen",
+    "forgotTitle": "Glömt lösenordet",
+    "forgotIntro": "Ange din e-postadress så skickar vi en länk för att välja nytt lösenord.",
+    "send": "Skicka länk",
+    "sent": "Om adressen tillhör en administratör har vi skickat en länk. Den gäller i en timme."
+  },
+  "users": {
+    "title": "Administratörer",
+    "invite": "Bjud in",
+    "inviteHelp": "Personen får ett mejl med en länk för att välja lösenord.",
+    "invited": "Inbjudan skickad.",
+    "pending": "Inbjuden",
+    "lastLogin": "Senast inloggad"
+  },
+  "upload": {
+    "choose": "Ladda upp bild",
+    "uploading": "Laddar upp …",
+    "help": "JPG, PNG eller WebP, högst 5 MB."
+  },
+  "profile": {
+    "title": "Profil",
+    "logo": "Logotyp",
+    "primaryColor": "Huvudfärg (sidhuvud)",
+    "accentColor": "Accentfärg (knappar)",
+    "supportEmail": "Supportadress (svar på kvitton går hit)",
+    "save": "Spara",
+    "saved": "Sparat. Ändringen syns för tittarna inom en minut.",
+    "removeLogo": "Ta bort logotyp"
+  },
+  "gdpr": {
+    "title": "Radera en köpares uppgifter",
+    "help": "Används när en köpare ber om att få sina uppgifter raderade. Köpet finns kvar i försäljningen men utan koppling till personen, och biljetten slutar fungera.",
+    "email": "Köparens e-post",
+    "erase": "Radera",
+    "confirm": "Radera köparens uppgifter? Det går inte att ångra.",
+    "done": "Klart. Om adressen hade ett konto är uppgifterna raderade."
+  }
+}

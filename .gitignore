@@ -1,0 +1,24 @@
+# .NET
+bin/
+obj/
+*.user
+*.suo
+.vs/
+TestResults/
+App_Data/
+*.db
+*.db-shm
+*.db-wal
+
+# Frontend
+node_modules/
+web/dist/
+web/coverage/
+*.tsbuildinfo
+
+# Published SPA copied into the host
+src/Fidoco.Host/wwwroot/
+
+# Misc
+.DS_Store
+.idea/

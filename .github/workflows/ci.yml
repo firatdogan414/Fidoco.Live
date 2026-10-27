@@ -1,0 +1,76 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+
+jobs:
+  backend:
+    name: Backend (build + tests on SQLite)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+          cache: true
+          cache-dependency-path: '**/*.csproj'
+      - run: dotnet restore Fidoco.Live.slnx
+      - run: dotnet build Fidoco.Live.slnx -c Release --no-restore
+      - run: dotnet test Fidoco.Live.slnx -c Release --no-build --filter "Category!=SqlServer"
+
+  sqlserver:
+    name: SQL Server (migrations + smoke test)
+    runs-on: ubuntu-latest
+    services:
+      mssql:
+        image: mcr.microsoft.com/mssql/server:2022-latest
+        env:
+          ACCEPT_EULA: 'Y'
+          MSSQL_SA_PASSWORD: 'Fidoco_Ci_Passw0rd!'
+        ports:
+          - 1433:1433
+        options: >-
+          --health-cmd "/opt/mssql-tools18/bin/sqlcmd -C -S localhost -U sa -P 'Fidoco_Ci_Passw0rd!' -Q 'SELECT 1' || exit 1"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      FIDOCO_TEST_SQLSERVER: 'Server=localhost,1433;User Id=sa;Password=Fidoco_Ci_Passw0rd!;TrustServerCertificate=True;Encrypt=False'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+          cache: true
+          cache-dependency-path: '**/*.csproj'
+      - run: dotnet restore Fidoco.Live.slnx
+      - run: dotnet build Fidoco.Live.slnx -c Release --no-restore
+      # Applies every module's migrations to an empty database and runs the end-to-end smoke test.
+      - run: dotnet test tests/Fidoco.IntegrationTests -c Release --no-build --filter "Category=SqlServer"
+
+  frontend:
+    name: Frontend (lint, typecheck, tests, build)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build

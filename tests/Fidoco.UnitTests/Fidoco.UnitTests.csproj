@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.TimeProvider.Testing" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Fidoco.Host\Fidoco.Host.csproj" />
+    <ProjectReference Include="..\..\src\Fidoco.SharedKernel\Fidoco.SharedKernel.csproj" />
+    <ProjectReference Include="..\..\src\Fidoco.Contracts\Fidoco.Contracts.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Fidoco.Modules.Identity\Fidoco.Modules.Identity.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Fidoco.Modules.Tenants\Fidoco.Modules.Tenants.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Fidoco.Modules.Catalog\Fidoco.Modules.Catalog.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Fidoco.Modules.Payments\Fidoco.Modules.Payments.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Fidoco.Modules.Playback\Fidoco.Modules.Playback.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Fidoco.Modules.Notifications\Fidoco.Modules.Notifications.csproj" />
+  </ItemGroup>
+</Project>

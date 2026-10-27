@@ -1,0 +1,120 @@
+using Fidoco.Modules.Notifications.Email;
+using Fidoco.Modules.Payments.Infrastructure.Gateway;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.AspNetCore.TestHost;
+using Microsoft.Data.Sqlite;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Time.Testing;
+
+namespace Fidoco.IntegrationTests.Infrastructure;
+
+/// <summary>
+/// The real app on an in-memory SQLite database with fake external services. Background outbox
+/// processing is off; tests call <see cref="TestApp.DrainOutboxAsync"/> to run side effects deterministically.
+/// </summary>
+public class FidocoApiFactory : WebApplicationFactory<Program>
+{
+    public const string PlatformHost = "platform.test";
+    public const string MuxWebhookSecret = "mux-test-webhook-secret";
+    public const string MuxSigningKeyId = "test-signing-key";
+
+    /// <summary>Stand-in for the built SPA's index.html (same placeholder as web/index.html).</summary>
+    public const string IndexHtml = "<!doctype html><html><head><title>Fidoco Live</title><!--fidoco:meta--></head><body><div id=\"root\"></div></body></html>";
+
+    /// <summary>RSA key standing in for the Mux signing key; tests verify playback tokens with it.</summary>
+    public static readonly System.Security.Cryptography.RSA SigningKey = System.Security.Cryptography.RSA.Create(2048);
+
+    private readonly SqliteConnection? _keepAlive;
+    private readonly Dictionary<string, string?> _settings;
+
+    public FidocoApiFactory()
+        : this(provider: "Sqlite", connectionString: null)
+    {
+    }
+
+    protected FidocoApiFactory(string provider, string? connectionString, IDictionary<string, string?>? overrides = null)
+    {
+        if (connectionString is null)
+        {
+            connectionString = $"Data Source=file:fidoco-{Guid.NewGuid():N}?mode=memory&cache=shared";
+            _keepAlive = new SqliteConnection(connectionString);
+            _keepAlive.Open();
+        }
+
+        _settings = new Dictionary<string, string?>
+        {
+            ["Database:Provider"] = provider,
+            ["Database:ConnectionString"] = connectionString,
+            ["Database:MigrateOnStartup"] = "true",
+            ["Outbox:Enabled"] = "false",
+            ["Retention:Enabled"] = "false",
+            ["Platform:Hosts:0"] = PlatformHost,
+            ["Seed:DevelopmentData"] = "false",
+            ["Email:Provider"] = "File",
+            ["Video:Provider"] = "Fake",
+            ["Mux:WebhookSecret"] = MuxWebhookSecret,
+            ["Stripe:WebhookSecret"] = TestPayments.WebhookSecret,
+            ["Mux:SigningKeyId"] = MuxSigningKeyId,
+            ["Mux:SigningKeyPrivate"] = Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(SigningKey.ExportRSAPrivateKeyPem())),
+            ["Storage:LocalPath"] = Path.Combine(Path.GetTempPath(), "fidoco-tests", Guid.NewGuid().ToString("N")),
+            ["Platform:Seller:LegalName"] = "Fidoco AB",
+            ["Platform:Seller:OrganizationNumber"] = "559999-9999",
+            ["PublicUrls:Template"] = "https://{host}",
+            ["RateLimiting:LoginPerMinute"] = "1000",
+            ["RateLimiting:CheckoutPerMinute"] = "1000",
+            ["RateLimiting:PlaybackTokenPerMinute"] = "1000",
+            ["RateLimiting:HeartbeatPerMinute"] = "1000",
+        };
+        foreach (var (key, value) in overrides ?? new Dictionary<string, string?>())
+        {
+            _settings[key] = value;
+        }
+    }
+
+    /// <summary>Starts at the real current time (Stripe signatures and cookies use wall-clock time).</summary>
+    public FakeTimeProvider Time { get; } = new(DateTimeOffset.UtcNow);
+
+    internal CapturingEmailSender Emails { get; } = new();
+
+    internal TestPaymentGateway Payments { get; } = new();
+
+    protected override void ConfigureWebHost(IWebHostBuilder builder)
+    {
+        builder.UseEnvironment("Testing");
+        var webRoot = Path.Combine(Path.GetTempPath(), "fidoco-tests", "webroot");
+        Directory.CreateDirectory(webRoot);
+        File.WriteAllText(Path.Combine(webRoot, "index.html"), IndexHtml);
+        builder.UseWebRoot(webRoot);
+        foreach (var (key, value) in _settings)
+        {
+            builder.UseSetting(key, value);
+        }
+
+        builder.ConfigureTestServices(services =>
+        {
+            services.RemoveAll<TimeProvider>();
+            services.AddSingleton<TimeProvider>(Time);
+            services.RemoveAll<IEmailSender>();
+            services.AddSingleton<IEmailSender>(Emails);
+            services.RemoveAll<IPaymentGateway>();
+            services.AddSingleton<IPaymentGateway>(Payments);
+            ConfigureFakes(services);
+        });
+    }
+
+    /// <summary>Hook for replacing external services (payments, video, email) with fakes.</summary>
+    protected virtual void ConfigureFakes(IServiceCollection services)
+    {
+    }
+
+    protected override void Dispose(bool disposing)
+    {
+        base.Dispose(disposing);
+        if (disposing)
+        {
+            _keepAlive?.Dispose();
+        }
+    }
+}

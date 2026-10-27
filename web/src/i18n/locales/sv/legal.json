@@ -1,0 +1,23 @@
+{
+  "terms": {
+    "title": "Köpvillkor",
+    "body": [
+      "Säljare är Fidoco, som säljer åtkomsten till sändningen i eget namn. Arrangören ansvarar för eventet och innehållet i sändningen.",
+      "Köpet ger en personlig åtkomst till sändningen och, om det anges vid köpet, till en repris under det angivna antalet dagar efter eventet. Biljetten kan användas på en enhet åt gången och får inte delas vidare.",
+      "Betalning sker via Stripe med kort eller andra betalsätt som visas i kassan. Priset inkluderar moms.",
+      "Ångerrätt gäller inte för digitalt innehåll som levereras vid ett bestämt datum när leveransen har påbörjats med ditt samtycke. Om sändningen ställs in återbetalas hela beloppet.",
+      "Har du frågor om ditt köp eller tekniska problem, svara på kvittomejlet så hjälper vi dig."
+    ],
+    "reviewNote": "Texten är ett utkast och ska granskas innan lansering."
+  },
+  "privacy": {
+    "title": "Integritetspolicy",
+    "body": [
+      "Vi sparar bara det som behövs för att leverera din biljett: din e-postadress och dina köp. Betaluppgifter hanteras av Stripe och når aldrig oss.",
+      "Vi använder bara nödvändiga cookies för inloggning. Vi använder ingen spårning eller marknadsföringscookies.",
+      "Uppgifter om köp sparas i sju år enligt bokföringslagen. Raderar du ditt konto tas kopplingen mellan dig och köpen bort.",
+      "Du kan när som helst radera ditt konto under Mitt konto, eller kontakta oss genom att svara på kvittomejlet."
+    ],
+    "reviewNote": "Texten är ett utkast och ska granskas innan lansering."
+  }
+}

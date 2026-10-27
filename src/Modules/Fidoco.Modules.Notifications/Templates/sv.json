@@ -1,0 +1,40 @@
+{
+  "layout": {
+    "footer": "Det här mejlet skickades av Fidoco för {tenant}. Svara på mejlet om du har frågor om eventet.",
+    "buttonFallback": "Fungerar inte knappen? Kopiera länken:"
+  },
+  "login-link": {
+    "subject": "Logga in hos {tenant}",
+    "heading": "Logga in",
+    "intro": "Klicka på knappen för att logga in. Länken gäller i 15 minuter och kan bara användas en gång.",
+    "button": "Logga in",
+    "outro": "Har du inte bett om att logga in kan du ignorera det här mejlet."
+  },
+  "receipt": {
+    "subject": "Kvitto: {eventTitle}",
+    "heading": "Tack för ditt köp!",
+    "intro": "Här är ditt kvitto för {eventTitle}.",
+    "button": "Titta på sändningen",
+    "outro": "Knappen loggar in dig direkt. Biljetten kan användas på en enhet åt gången.",
+    "vat": "Varav moms {rate} %",
+    "total": "Totalt",
+    "seller": "Säljare",
+    "organizer": "Arrangör",
+    "orderNumber": "Ordernummer",
+    "purchaseDate": "Köpdatum"
+  },
+  "admin-invite": {
+    "subject": "Du är inbjuden som administratör för {tenant}",
+    "heading": "Välkommen!",
+    "intro": "Du har bjudits in som administratör. Klicka på knappen för att välja ditt lösenord. Länken gäller i 7 dagar.",
+    "button": "Välj lösenord",
+    "outro": ""
+  },
+  "password-reset": {
+    "subject": "Återställ ditt lösenord",
+    "heading": "Återställ lösenord",
+    "intro": "Klicka på knappen för att välja ett nytt lösenord. Länken gäller i 1 timme.",
+    "button": "Välj nytt lösenord",
+    "outro": "Har du inte bett om att återställa lösenordet kan du ignorera det här mejlet."
+  }
+}

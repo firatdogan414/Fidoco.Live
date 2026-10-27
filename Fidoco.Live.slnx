@@ -1,0 +1,14 @@
+<Solution>
+  <Project Path="src/Fidoco.Contracts/Fidoco.Contracts.csproj" />
+  <Project Path="src/Fidoco.Host/Fidoco.Host.csproj" />
+  <Project Path="src/Fidoco.SharedKernel/Fidoco.SharedKernel.csproj" />
+  <Project Path="src/Modules/Fidoco.Modules.Catalog/Fidoco.Modules.Catalog.csproj" />
+  <Project Path="src/Modules/Fidoco.Modules.Identity/Fidoco.Modules.Identity.csproj" />
+  <Project Path="src/Modules/Fidoco.Modules.Notifications/Fidoco.Modules.Notifications.csproj" />
+  <Project Path="src/Modules/Fidoco.Modules.Payments/Fidoco.Modules.Payments.csproj" />
+  <Project Path="src/Modules/Fidoco.Modules.Playback/Fidoco.Modules.Playback.csproj" />
+  <Project Path="src/Modules/Fidoco.Modules.Tenants/Fidoco.Modules.Tenants.csproj" />
+  <Project Path="tests/Fidoco.ArchitectureTests/Fidoco.ArchitectureTests.csproj" />
+  <Project Path="tests/Fidoco.IntegrationTests/Fidoco.IntegrationTests.csproj" />
+  <Project Path="tests/Fidoco.UnitTests/Fidoco.UnitTests.csproj" />
+</Solution>
