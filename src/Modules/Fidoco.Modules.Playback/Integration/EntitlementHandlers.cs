@@ -7,20 +7,29 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Fidoco.Modules.Playback.Integration;
 
-/// <summary>Grants access after payment (via the outbox). Idempotent: one entitlement per purchase line.</summary>
-internal sealed class GrantEntitlementsOnPurchase(PlaybackDbContext db, TimeProvider time) : IDomainEventHandler<PurchaseCompleted>
+/// <summary>
+/// Grants access after payment (via the outbox). Idempotent: one entitlement per purchase line. Never grants
+/// for a refunded purchase: the refund's revoke handler may run first (e.g. while this one is being retried).
+/// </summary>
+internal sealed class GrantEntitlementsOnPurchase(PlaybackDbContext db, IPurchaseQueries purchases, TimeProvider time) : IDomainEventHandler<PurchaseCompleted>
 {
     public async Task HandleAsync(PurchaseCompleted purchase, CancellationToken cancellationToken)
     {
+        if (await purchases.IsRefundedAsync(purchase.PurchaseId, cancellationToken))
+        {
+            return;
+        }
+
         var lineIds = purchase.Lines.Select(l => l.PurchaseLineId).ToList();
         var existing = await db.Entitlements
             .Where(e => e.SourceType == Entitlement.PurchaseSource && lineIds.Contains(e.SourceId))
             .Select(e => e.SourceId)
             .ToListAsync(cancellationToken);
 
+        var granted = new List<Entitlement>();
         foreach (var line in purchase.Lines.Where(l => !existing.Contains(l.PurchaseLineId)))
         {
-            db.Entitlements.Add(new Entitlement
+            granted.Add(new Entitlement
             {
                 Id = Guid.CreateVersion7(),
                 CustomerId = purchase.CustomerId,
@@ -34,7 +43,20 @@ internal sealed class GrantEntitlementsOnPurchase(PlaybackDbContext db, TimeProv
             });
         }
 
+        db.Entitlements.AddRange(granted);
         await db.SaveChangesAsync(cancellationToken);
+
+        // A refund committed between the check above and this save: its revoke handler may already have run
+        // and found nothing, so revoke what was just granted.
+        if (granted.Count > 0 && await purchases.IsRefundedAsync(purchase.PurchaseId, cancellationToken))
+        {
+            granted.ForEach(e =>
+            {
+                e.Status = EntitlementStatus.Revoked;
+                e.RevokedAt = time.GetUtcNow();
+            });
+            await db.SaveChangesAsync(cancellationToken);
+        }
     }
 }
 
