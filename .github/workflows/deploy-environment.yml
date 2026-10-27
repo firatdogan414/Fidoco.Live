@@ -1,0 +1,125 @@
+name: Deploy environment
+
+# Deploys the "release" artifact of the calling run to one GitHub environment. All settings are
+# environment variables (Settings → Environments → <name> → Variables), none of them secret:
+#   AZURE_CLIENT_ID, AZURE_TENANT_ID, AZURE_SUBSCRIPTION_ID   app registration with federated credentials (OIDC)
+#   AZURE_RESOURCE_GROUP, AZURE_APP_NAME                       e.g. fidoco-production / fidoco-prod
+#   SQL_ADMIN_GROUP_NAME, SQL_ADMIN_GROUP_OBJECT_ID            Entra group administering the SQL server
+#   optional: APP_SERVICE_SKU, SQL_DATABASE_SKU, PLATFORM_HOST, BOOTSTRAP_ADMIN_EMAIL, SELLER_*, SMTP_HOST,
+#             SMTP_USERNAME, EMAIL_FROM_ADDRESS (see infra/<environment>.bicepparam)
+on:
+  workflow_call:
+    inputs:
+      environment:
+        type: string
+        required: true
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  deploy:
+    name: Deploy to ${{ inputs.environment }}
+    runs-on: ubuntu-latest
+    environment:
+      name: ${{ inputs.environment }}
+      url: https://${{ steps.infra.outputs.appHostName }}
+    env:
+      RESOURCE_GROUP: ${{ vars.AZURE_RESOURCE_GROUP }}
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: release
+          path: release
+
+      - name: Sign in to Azure (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      # Idempotent: creates or updates App Service, SQL, Application Insights and Key Vault.
+      - name: Provision infrastructure (Bicep)
+        id: infra
+        env:
+          AZURE_APP_NAME: ${{ vars.AZURE_APP_NAME }}
+          APP_SERVICE_SKU: ${{ vars.APP_SERVICE_SKU || 'B1' }}
+          SQL_DATABASE_SKU: ${{ vars.SQL_DATABASE_SKU || 'S0' }}
+          SQL_ADMIN_GROUP_NAME: ${{ vars.SQL_ADMIN_GROUP_NAME }}
+          SQL_ADMIN_GROUP_OBJECT_ID: ${{ vars.SQL_ADMIN_GROUP_OBJECT_ID }}
+          PLATFORM_HOST: ${{ vars.PLATFORM_HOST }}
+          BOOTSTRAP_ADMIN_EMAIL: ${{ vars.BOOTSTRAP_ADMIN_EMAIL }}
+          SELLER_LEGAL_NAME: ${{ vars.SELLER_LEGAL_NAME || 'Fidoco' }}
+          SELLER_ORGANIZATION_NUMBER: ${{ vars.SELLER_ORGANIZATION_NUMBER }}
+          SELLER_VAT_NUMBER: ${{ vars.SELLER_VAT_NUMBER }}
+          SELLER_ADDRESS: ${{ vars.SELLER_ADDRESS }}
+          SMTP_HOST: ${{ vars.SMTP_HOST }}
+          SMTP_USERNAME: ${{ vars.SMTP_USERNAME }}
+          EMAIL_FROM_ADDRESS: ${{ vars.EMAIL_FROM_ADDRESS || 'noreply@fidoco.se' }}
+        run: |
+          outputs=$(az deployment group create \
+            --resource-group "$RESOURCE_GROUP" \
+            --name "fidoco-${{ github.run_id }}-${{ github.run_attempt }}" \
+            --parameters "release/infra/${{ inputs.environment }}.bicepparam" \
+            --query properties.outputs --output json)
+          for key in appName appHostName appPrincipalId sqlServerName sqlServerFqdn databaseName; do
+            echo "$key=$(jq -r ".$key.value" <<<"$outputs")" >> "$GITHUB_OUTPUT"
+          done
+
+      - name: Install sqlcmd
+        run: |
+          curl -sSL https://packages.microsoft.com/keys/microsoft.asc | sudo tee /etc/apt/trusted.gpg.d/microsoft.asc > /dev/null
+          sudo add-apt-repository -y "$(curl -sSL https://packages.microsoft.com/config/ubuntu/$(lsb_release -rs)/prod.list)"
+          sudo apt-get update -q && sudo apt-get install -y -q sqlcmd
+
+      - name: Open the SQL firewall for this runner
+        run: |
+          ip=$(curl -fsS https://api.ipify.org)
+          az sql server firewall-rule create --resource-group "$RESOURCE_GROUP" --server "${{ steps.infra.outputs.sqlServerName }}" \
+            --name "github-${{ github.run_id }}" --start-ip-address "$ip" --end-ip-address "$ip" --output none
+
+      # Signed in as the deploy identity (a member of the SQL admin group) through the Azure CLI session.
+      - name: Apply migrations (efbundle)
+        env:
+          AZURE_TOKEN_CREDENTIALS: AzureCliCredential # "Active Directory Default" → only the az login above
+        run: |
+          connection="Server=tcp:${{ steps.infra.outputs.sqlServerFqdn }},1433;Database=${{ steps.infra.outputs.databaseName }};Authentication=Active Directory Default;Encrypt=True;Connect Timeout=60"
+          for bundle in release/migrations/efbundle-*; do
+            echo "::group::$(basename "$bundle")"
+            chmod +x "$bundle"
+            "$bundle" --connection "$connection"
+            echo "::endgroup::"
+          done
+
+      - name: Give the app's managed identity access to the database
+        run: |
+          app="${{ steps.infra.outputs.appName }}"
+          sqlcmd -S "${{ steps.infra.outputs.sqlServerFqdn }}" -d "${{ steps.infra.outputs.databaseName }}" \
+            --authentication-method ActiveDirectoryAzCli -b -Q "
+            IF NOT EXISTS (SELECT 1 FROM sys.database_principals WHERE name = N'$app')
+              CREATE USER [$app] FROM EXTERNAL PROVIDER WITH OBJECT_ID = '${{ steps.infra.outputs.appPrincipalId }}';
+            ALTER ROLE db_datareader ADD MEMBER [$app];
+            ALTER ROLE db_datawriter ADD MEMBER [$app];"
+
+      - name: Close the SQL firewall
+        if: always() && steps.infra.outputs.sqlServerName != ''
+        run: |
+          az sql server firewall-rule delete --resource-group "$RESOURCE_GROUP" --server "${{ steps.infra.outputs.sqlServerName }}" \
+            --name "github-${{ github.run_id }}" --output none || true
+
+      - name: Deploy app
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: ${{ steps.infra.outputs.appName }}
+          package: release/app.zip
+
+      - name: Smoke test
+        run: |
+          host="https://${{ steps.infra.outputs.appHostName }}"
+          curl -fsS --retry 20 --retry-delay 15 --retry-all-errors "$host/health/live"
+          # 503 = Unhealthy (e.g. the database is unreachable); Degraded (an external service) still passes.
+          curl -fsS --retry 5 --retry-delay 15 --retry-all-errors "$host/health" | tee health.json
+          echo
+          echo "Deployed $(cat release/COMMIT) to ${{ inputs.environment }}" >> "$GITHUB_STEP_SUMMARY"

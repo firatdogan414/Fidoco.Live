@@ -196,55 +196,119 @@ out; when it does, the free-offer database is **paused for the rest of the month
 behaviour) and the platform stops working. Choose **Basic** (≈5 DTU) or **S0** (10 DTU) for a fixed,
 predictable price; scale up the tier before large events if needed.
 
-### Steps
+### What gets deployed
+
+`infra/main.bicep` (one resource group per environment, parameters in `infra/<environment>.bicepparam`):
+
+| Resource | Setting |
+|---|---|
+| App Service plan | Linux, **B1** (`APP_SERVICE_SKU`) |
+| Web app | .NET 10, **Always On** (outbox and retention jobs), **HTTPS Only**, TLS 1.2, HTTP/2, health check `/health/live`, system-assigned managed identity, FTP/basic-auth publishing off |
+| Azure SQL | DTU **S0** (`SQL_DATABASE_SKU`), Entra-only authentication (no SQL password), admin = an Entra group |
+| Application Insights | Workspace-based (Log Analytics, 30 days); `APPLICATIONINSIGHTS_CONNECTION_STRING` is set on the app |
+| Key Vault | RBAC; holds the Stripe, Mux and SMTP secrets, read by the app's identity via Key Vault references |
+
+The app connects to SQL with its managed identity (`Authentication=Active Directory Managed Identity`), so no
+connection-string password exists. All other settings are app settings written by Bicep: **settings changed by
+hand in the portal are overwritten by the next deployment.**
+
+### Pipeline (`.github/workflows/deploy.yml`)
+
+1. Every push to `main` runs CI; when CI is green, **Deploy** builds the release once: the published app
+   (including the React build) and one self-contained `efbundle` per module DbContext.
+2. **Staging** (GitHub environment `staging`) and then **production** (environment `production`, which waits for
+   a required reviewer's approval) run `deploy-environment.yml`:
+   sign in to Azure with **OIDC** (`azure/login`, no stored secret) → Bicep (idempotent) → temporary SQL firewall
+   rule for the runner → **migrations with the efbundles** → database user for the app's identity (first time)
+   → close the firewall → zip deploy → smoke test (`/health/live`, `/health`).
+3. Run **Deploy** manually (Actions → Deploy → Run workflow) to redeploy the latest `main`.
+
+`Database:MigrateOnStartup` is `false` in Azure: the schema is migrated before the new code starts.
+
+### One-time setup
+
+Run once per environment (`staging`, `production`) with the Azure CLI; replace names as needed. Names of the web
+app, SQL server and Key Vault are global (`AZURE_APP_NAME`, 3–18 characters, e.g. `fidoco-prod` and `fidoco-stage`).
+
+**1. Resource group and SQL admin group**
 
 ```bash
-RG=fidoco-prod; LOC=swedencentral; APP=fidoco-live; SQL=fidoco-sql
+ENV=production; RG=fidoco-$ENV; LOC=swedencentral
 az group create -n $RG -l $LOC
-az sql server create -g $RG -n $SQL -l $LOC --admin-user fidocoadmin --admin-password '<strong password>'
-az sql db create -g $RG -s $SQL -n fidoco --edition Basic          # or: --service-objective S0
-az sql server firewall-rule create -g $RG -s $SQL -n azure --start-ip-address 0.0.0.0 --end-ip-address 0.0.0.0
-az appservice plan create -g $RG -n fidoco-plan --is-linux --sku B1
-az webapp create -g $RG -p fidoco-plan -n $APP --runtime "DOTNETCORE:10.0"
-az webapp config set -g $RG -n $APP --always-on true            # required: outbox and retention jobs
+# Members administer the SQL databases with their Entra identity: you and (step 2) the deploy identity.
+az ad group create --display-name fidoco-sql-admins-$ENV --mail-nickname fidoco-sql-admins-$ENV
+az ad group member add --group fidoco-sql-admins-$ENV --member-id $(az ad signed-in-user show --query id -o tsv)
 ```
 
-App settings (Configuration → Application settings; use Key Vault references for secrets):
-
-```
-ASPNETCORE_ENVIRONMENT=Production
-ASPNETCORE_FORWARDEDHEADERS_ENABLED=true       # correct https scheme and client IP behind App Service
-Database__Provider=SqlServer
-Database__ConnectionString=<Azure SQL connection string>
-Database__MigrateOnStartup=true
-Platform__Hosts__0=admin.fidoco.se
-Platform__BootstrapAdminEmail=<your e-mail>
-Platform__Seller__LegalName=..., Platform__Seller__OrganizationNumber=..., Platform__Seller__VatNumber=...
-Storage__LocalPath=/home/data/files
-Email__Smtp__Host=..., Email__Smtp__Username=..., Email__Smtp__Password=...
-Stripe__SecretKey=..., Stripe__WebhookSecret=...
-Mux__TokenId=..., Mux__TokenSecret=..., Mux__WebhookSecret=..., Mux__SigningKeyId=..., Mux__SigningKeyPrivate=...
-APPLICATIONINSIGHTS_CONNECTION_STRING=...
-```
-
-Publish (builds the React app into `wwwroot` automatically):
+**2. OIDC connection between GitHub and Azure** (no client secret)
 
 ```bash
-dotnet publish src/Fidoco.Host -c Release -o publish
-cd publish && zip -r ../app.zip . && cd ..
-az webapp deploy -g $RG -n $APP --src-path app.zip --type zip
+REPO=firatdogan414/fidoco.live
+APP_ID=$(az ad app create --display-name github-fidoco-$ENV --query appId -o tsv)
+SP_ID=$(az ad sp create --id $APP_ID --query id -o tsv)
+az ad app federated-credential create --id $APP_ID --parameters "{
+  \"name\": \"github-$ENV\", \"issuer\": \"https://token.actions.githubusercontent.com\",
+  \"subject\": \"repo:$REPO:environment:$ENV\", \"audiences\": [\"api://AzureADTokenExchange\"] }"
+RG_ID=$(az group show -n $RG --query id -o tsv)
+az role assignment create --assignee-object-id $SP_ID --assignee-principal-type ServicePrincipal --role Contributor --scope $RG_ID
+# Bicep grants the app's identity "Key Vault Secrets User"; allow the deploy identity to assign only that role.
+az role assignment create --assignee-object-id $SP_ID --assignee-principal-type ServicePrincipal \
+  --role "Role Based Access Control Administrator" --scope $RG_ID \
+  --condition "((!(ActionMatches{'Microsoft.Authorization/roleAssignments/write'})) OR (@Request[Microsoft.Authorization/roleAssignments:RoleDefinitionId] ForAnyOfAnyValues:GuidEquals {4633458b-17de-408a-b874-0445c86b69e6}))" \
+  --condition-version 2.0
+az ad group member add --group fidoco-sql-admins-$ENV --member-id $SP_ID   # runs migrations as SQL admin
 ```
 
-Health checks: `/health/live` (process) for the App Service health check, `/health` (JSON with databases,
-outbox, Stripe and Mux; external problems report *Degraded*).
+The subject ties the credential to the GitHub environment, so only jobs running in that environment can sign in.
+
+**3. GitHub environments** (Settings → Environments)
+
+- `staging`: deployment branches = `main`.
+- `production`: deployment branches = `main`, **Required reviewers** = you (this is the manual approval).
+- Variables in each environment (none of them secret):
+  `AZURE_CLIENT_ID` (`$APP_ID`), `AZURE_TENANT_ID` (`az account show --query tenantId -o tsv`),
+  `AZURE_SUBSCRIPTION_ID`, `AZURE_RESOURCE_GROUP` (`$RG`), `AZURE_APP_NAME`, `SQL_ADMIN_GROUP_NAME`
+  (`fidoco-sql-admins-$ENV`), `SQL_ADMIN_GROUP_OBJECT_ID` (`az ad group show -g fidoco-sql-admins-$ENV --query id -o tsv`),
+  and as needed `PLATFORM_HOST` (e.g. `admin.fidoco.se`; empty = `<app>.azurewebsites.net`), `BOOTSTRAP_ADMIN_EMAIL`,
+  `SELLER_LEGAL_NAME`, `SELLER_ORGANIZATION_NUMBER`, `SELLER_VAT_NUMBER`, `SELLER_ADDRESS`, `SMTP_HOST`,
+  `SMTP_USERNAME`, `EMAIL_FROM_ADDRESS`, `APP_SERVICE_SKU`, `SQL_DATABASE_SKU`.
+
+**4. First deployment and secrets**
+
+Run Deploy once (it creates the Key Vault), then store the secrets and restart the app:
+
+```bash
+KV=$AZURE_APP_NAME-kv
+az role assignment create --assignee $(az ad signed-in-user show --query id -o tsv) --role "Key Vault Secrets Officer" \
+  --scope $(az keyvault show -n $KV --query id -o tsv)
+for name in stripe-secret-key stripe-webhook-secret mux-token-id mux-token-secret mux-webhook-secret \
+            mux-signing-key-id mux-signing-key-private smtp-password; do
+  read -rsp "$name: " value; echo; az keyvault secret set --vault-name $KV -n $name --value "$value" -o none
+done
+az webapp restart -g $RG -n $AZURE_APP_NAME
+```
+
+Use Stripe **test** keys in staging. A rotated secret is picked up by restarting the app (or within 24 hours).
+Configuration → Environment variables shows a green check per Key Vault reference when it resolves.
 
 ### Domains and certificates
 
-- DNS for `fidoco.se`: `admin.fidoco.se` and each tenant `{slug}.fidoco.se` as CNAME to `<app>.azurewebsites.net`
-  plus the `asuid` TXT record, then App Service → Custom domains → add, and **App Service Managed Certificate**
-  per host name (free; wildcards are not supported, so one binding per tenant host in phase 1).
-- A tenant's own domain (e.g. `stream.afnmma.se`): the organizer adds the CNAME/TXT, you bind it with a
-  managed certificate, then add it under the tenant in the platform admin.
+- DNS for `fidoco.se`: `admin.fidoco.se` and each tenant `{slug}.fidoco.se` as **CNAME** to `<app>.azurewebsites.net`
+  plus the **TXT** record `asuid.<host>` with the app's verification id
+  (`az webapp show -g $RG -n $APP --query customDomainVerificationId -o tsv`). Then per host:
+
+  ```bash
+  az webapp config hostname add -g $RG --webapp-name $APP --hostname afn.fidoco.se
+  THUMB=$(az webapp config ssl create -g $RG -n $APP --hostname afn.fidoco.se --query thumbprint -o tsv)  # free managed certificate
+  az webapp config ssl bind -g $RG -n $APP --certificate-thumbprint $THUMB --ssl-type SNI
+  ```
+
+  Managed certificates renew automatically; wildcards are not supported, so one binding per tenant host.
+  Host name bindings and certificates are not part of Bicep, so deployments never remove them.
+- A tenant's own domain (e.g. `stream.afnmma.se`): the organizer adds the CNAME/TXT, you bind it as above, then add it
+  under the tenant in the platform admin.
+- Point the Stripe and Mux webhooks at the platform host (`https://admin.fidoco.se/api/v1/webhooks/...`) and set
+  `PLATFORM_HOST`. Staging uses its own Stripe test-mode and Mux webhooks.
 - E-mail: verify `fidoco.se` in the e-mail provider and publish SPF, DKIM and DMARC records.
 
 ### Scaling out

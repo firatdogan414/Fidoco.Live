@@ -21,8 +21,8 @@ Deliberately left for later phases, in the suggested order. Phase 1 (the MVP) is
 10. **VAT for more countries**: buyers in other EU countries (OSS, VAT by the buyer's country), Stripe Tax.
 11. **Redis and Azure SignalR when scaling out**: `AddStackExchangeRedisCache`, a Redis `IViewerPresence`
     (sorted set per event), `Azure:SignalR:ConnectionString`; distributed rate limiting if needed.
-12. **Infrastructure as code (Bicep)**: App Service, Azure SQL (DTU), Application Insights, Key Vault,
-    managed certificates, DNS.
+12. **Custom domains in infrastructure as code**: DNS records, host name bindings and managed certificates
+    (App Service, SQL, Application Insights and Key Vault are in `infra/main.bicep` already).
 13. **Physical tickets with capacity**: reservations in `ITicketAvailability` (see ARCHITECTURE.md),
     QR tickets, a scanning app, combined physical + stream orders.
 
