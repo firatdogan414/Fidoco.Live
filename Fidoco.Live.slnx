@@ -7,6 +7,7 @@
   <Project Path="src/Modules/Fidoco.Modules.Notifications/Fidoco.Modules.Notifications.csproj" />
   <Project Path="src/Modules/Fidoco.Modules.Payments/Fidoco.Modules.Payments.csproj" />
   <Project Path="src/Modules/Fidoco.Modules.Playback/Fidoco.Modules.Playback.csproj" />
+  <Project Path="src/Modules/Fidoco.Modules.Support/Fidoco.Modules.Support.csproj" />
   <Project Path="src/Modules/Fidoco.Modules.Tenants/Fidoco.Modules.Tenants.csproj" />
   <Project Path="tests/Fidoco.ArchitectureTests/Fidoco.ArchitectureTests.csproj" />
   <Project Path="tests/Fidoco.IntegrationTests/Fidoco.IntegrationTests.csproj" />

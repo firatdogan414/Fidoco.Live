@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Text;
 using Fidoco.Contracts.Catalog;
 using Fidoco.Contracts.Identity;
+using Fidoco.Contracts.Playback;
 using Fidoco.Contracts.Tenants;
 using Fidoco.Modules.Payments.Domain;
 using Fidoco.Modules.Payments.Infrastructure;
@@ -17,7 +18,8 @@ namespace Fidoco.Modules.Payments.Features;
 /// <summary>
 /// Settlement between Fidoco (seller) and the organizer: per event, revenue excluding VAT minus Fidoco's
 /// commission is the organizer's share, which the organizer invoices Fidoco for. Refunded purchases count
-/// for nobody. Stripe fees are Fidoco's cost (covered by the commission).
+/// for nobody. Complimentary tickets (friplatser) are listed but count as 0 kr. Stripe fees are Fidoco's
+/// cost (covered by the commission).
 /// </summary>
 internal static class SettlementEndpoints
 {
@@ -29,6 +31,7 @@ internal static class SettlementEndpoints
         string EventTitle,
         int TicketsSold,
         int TicketsRefunded,
+        int ComplimentaryTickets,
         long GrossAmount,
         long VatAmount,
         long NetAmount,
@@ -48,7 +51,15 @@ internal static class SettlementEndpoints
     }
 
     /// <summary>All tenants and events with purchases completed in [from, to). Platform owner only.</summary>
-    private static async Task<IResult> ForPlatform(DateTimeOffset? from, DateTimeOffset? to, PaymentsDbContext db, ITenantDirectory tenants, TimeProvider time, CancellationToken cancellationToken)
+    private static async Task<IResult> ForPlatform(
+        DateTimeOffset? from,
+        DateTimeOffset? to,
+        PaymentsDbContext db,
+        ITenantDirectory tenants,
+        ITenantContext tenant,
+        IComplimentaryTickets comps,
+        TimeProvider time,
+        CancellationToken cancellationToken)
     {
         var until = to ?? time.GetUtcNow().AddDays(1);
         var since = from ?? until.AddMonths(-1);
@@ -72,8 +83,14 @@ internal static class SettlementEndpoints
             var info = await tenants.GetAsync(group.Key.TenantId, cancellationToken);
             var terms = await tenants.GetCommercialTermsAsync(group.Key.TenantId, cancellationToken);
             var summary = new EventSummary(group.Key.EventId, "", group.First().EventTitle, default);
+            int compCount;
+            using (tenant.Use(group.Key.TenantId))
+            {
+                compCount = await comps.CountActiveForEventAsync(group.Key.EventId, cancellationToken);
+            }
+
             result.Add(new TenantSettlement(group.Key.TenantId, info?.Name ?? group.Key.TenantId.ToString(),
-                Calculate(summary, group.Select(g => g.Line).ToList(), terms.OrganizerVatRegistered)));
+                Calculate(summary, group.Select(g => g.Line).ToList(), compCount, terms.OrganizerVatRegistered)));
         }
 
         return Results.Ok(result.OrderBy(r => r.TenantName).ThenBy(r => r.Settlement.EventTitle));
@@ -86,6 +103,7 @@ internal static class SettlementEndpoints
         ICatalogQueries catalog,
         ITenantDirectory tenants,
         ITenantContext tenant,
+        IComplimentaryTickets comps,
         CancellationToken cancellationToken)
     {
         var ev = await catalog.GetEventSummaryAsync(eventId, cancellationToken);
@@ -96,7 +114,8 @@ internal static class SettlementEndpoints
 
         var terms = await tenants.GetCommercialTermsAsync(tenant.RequiredTenantId, cancellationToken);
         var lines = await LinesAsync(db, eventId, cancellationToken);
-        var settlement = Calculate(ev, lines, terms.OrganizerVatRegistered);
+        var compCount = await comps.CountActiveForEventAsync(eventId, cancellationToken);
+        var settlement = Calculate(ev, lines, compCount, terms.OrganizerVatRegistered);
 
         return format == "csv"
             ? Results.File(Encoding.UTF8.GetPreamble().Concat(Encoding.UTF8.GetBytes(ToCsv(settlement, lines))).ToArray(),
@@ -115,7 +134,7 @@ internal static class SettlementEndpoints
         .OrderBy(l => l.CompletedAt)
         .ToList();
 
-    internal static Settlement Calculate(EventSummary ev, IReadOnlyList<SettlementLine> lines, bool organizerVatRegistered)
+    internal static Settlement Calculate(EventSummary ev, IReadOnlyList<SettlementLine> lines, int complimentaryTickets, bool organizerVatRegistered)
     {
         var counted = lines.Where(l => l.Status == PurchaseStatus.Completed).ToList();
         var net = counted.Sum(l => l.Net);
@@ -127,6 +146,7 @@ internal static class SettlementEndpoints
             ev.Title,
             counted.Sum(l => l.Quantity),
             lines.Where(l => l.Status == PurchaseStatus.Refunded).Sum(l => l.Quantity),
+            complimentaryTickets,
             counted.Sum(l => l.Gross),
             counted.Sum(l => l.Vat),
             net,
@@ -147,11 +167,16 @@ internal static class SettlementEndpoints
         {
             var counted = l.Status == PurchaseStatus.Completed;
             csv.AppendLine(string.Join(';',
-                l.PurchaseId.ToString("N")[..12].ToUpperInvariant(),
+                OrderNumbers.For(l.PurchaseId),
                 l.CompletedAt.ToString("yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture),
                 counted ? "Genomfört" : "Återbetalt",
                 l.Quantity,
                 M(l.Gross), M(l.Vat), M(l.Net), M(counted ? l.Fee : 0), M(counted ? l.Net - l.Fee : 0)));
+        }
+
+        if (s.ComplimentaryTickets > 0)
+        {
+            csv.AppendLine($"Friplatser;;Kostnadsfria;{s.ComplimentaryTickets};{M(0)};{M(0)};{M(0)};{M(0)};{M(0)}");
         }
 
         csv.AppendLine();

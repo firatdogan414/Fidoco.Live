@@ -164,6 +164,17 @@ Start the encoder 10–15 minutes before the event to verify the status turns to
 switches to live automatically; viewers' pages switch from the countdown to the player within 15 seconds.
 Keep the stream key secret: anyone with it can broadcast on the event.
 
+## Support for buyers (organizer admin → Support)
+
+- **Find a buyer** by e-mail or part of it: purchases (amount actually paid, refunds), tickets with what they allow
+  right now (live, replay or why not) and **Tittar nu** when a device is watching.
+- **Send a new login link**: single use, valid 24 hours, to the buyer's own address (optionally straight to an
+  event's watch page). Buyers are never signed in by the admin.
+- **Friplatser (comps)** on the event page: free access for an e-mail address (an account is created if needed and a
+  sign-in link is e-mailed). Comps are listed separately, can be revoked (a running player stops within 30 s) and
+  count as 0 kr in the settlement.
+- Every action is logged (admin, action, buyer, event, time) and shown on the Support page.
+
 ---
 
 ## Deploy to Azure (App Service + Azure SQL)

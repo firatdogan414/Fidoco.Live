@@ -35,7 +35,7 @@ Deliberately left for later phases, in the suggested order. Phase 1 (the MVP) is
 - Automate custom-domain onboarding (DNS check, App Service binding, certificate) from the platform admin.
 - Sending e-mail from the organizer's own domain (per-tenant DKIM).
 - More languages: add `web/src/i18n/locales/<lang>` and `Templates/<lang>.json`; language per customer.
-- Admin: list of buyers per event (support), resend receipt, manual access grants.
+- Admin: list of buyers per event and resending the original receipt (buyer lookup, new login links and comps exist).
 - Load test the token/heartbeat endpoints (target: 2 000 concurrent viewers per instance) before the first large event.
 - Legal review of the terms of purchase and privacy policy drafts (`web/src/i18n/locales/sv/legal.json`).
 

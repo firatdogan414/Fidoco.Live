@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using Fidoco.Contracts.Identity;
+using Fidoco.Contracts.Notifications;
 using Fidoco.Contracts.Tenants;
 using Fidoco.Modules.Identity.Domain;
 using Fidoco.Modules.Identity.Infrastructure;
@@ -43,6 +44,36 @@ internal sealed class CustomerAccounts(IdentityDbContext db, TimeProvider time) 
             .Select(c => new CustomerInfo(c.Id, c.Email))
             .SingleOrDefaultAsync(cancellationToken);
 
+    public async Task<IReadOnlyList<CustomerInfo>> GetManyAsync(IReadOnlyCollection<Guid> customerIds, CancellationToken cancellationToken) =>
+        await db.Customers.AsNoTracking()
+            .Where(c => customerIds.Contains(c.Id))
+            .Select(c => new CustomerInfo(c.Id, c.Email))
+            .ToListAsync(cancellationToken);
+
+    public Task<CustomerProfile?> GetProfileAsync(Guid customerId, CancellationToken cancellationToken) =>
+        db.Customers.AsNoTracking()
+            .Where(c => c.Id == customerId)
+            .Select(c => new CustomerProfile(c.Id, c.Email, c.CreatedAt, c.LastLoginAt))
+            .SingleOrDefaultAsync(cancellationToken);
+
+    public async Task<IReadOnlyList<CustomerProfile>> SearchAsync(string emailPart, int max, CancellationToken cancellationToken)
+    {
+        var normalized = Emails.Normalize(emailPart);
+        if (normalized.Length == 0)
+        {
+            return [];
+        }
+
+        // E-mails are stored normalized (lower-case), so a plain Contains is case-insensitive on every provider.
+        return await db.Customers.AsNoTracking()
+            .Where(c => c.Email.Contains(normalized))
+            .OrderBy(c => c.Email == normalized ? 0 : 1)
+            .ThenBy(c => c.Email)
+            .Take(max)
+            .Select(c => new CustomerProfile(c.Id, c.Email, c.CreatedAt, c.LastLoginAt))
+            .ToListAsync(cancellationToken);
+    }
+
     private Task<Guid?> FindIdAsync(string normalizedEmail, CancellationToken cancellationToken) =>
         db.Customers.AsNoTracking()
             .Where(c => c.Email == normalizedEmail)
@@ -52,12 +83,34 @@ internal sealed class CustomerAccounts(IdentityDbContext db, TimeProvider time) 
 
 internal sealed class CustomerLoginLinks(
     IdentityDbContext db,
+    IEmailDispatcher email,
     ITenantContext tenantContext,
     ITenantDirectory tenants,
     PublicUrls urls,
     TimeProvider time) : ICustomerLoginLinks
 {
-    public async Task<string> CreateReceiptLinkAsync(Guid customerId, string returnPath, DateTimeOffset expiresAt, CancellationToken cancellationToken)
+    public static readonly TimeSpan SupportLinkLifetime = TimeSpan.FromHours(24);
+
+    public Task<string> CreateReceiptLinkAsync(Guid customerId, string returnPath, DateTimeOffset expiresAt, CancellationToken cancellationToken) =>
+        CreateLinkAsync(customerId, LoginTokenPurpose.Receipt, returnPath, expiresAt, cancellationToken);
+
+    public async Task<bool> SendSupportLinkAsync(Guid customerId, string returnPath, CancellationToken cancellationToken)
+    {
+        var customer = await db.Customers.AsNoTracking().SingleOrDefaultAsync(c => c.Id == customerId, cancellationToken);
+        if (customer is null)
+        {
+            return false;
+        }
+
+        // Single use like a link from the login page, but valid longer: the buyer may read it hours later.
+        var link = await CreateLinkAsync(customerId, LoginTokenPurpose.Login, returnPath, time.GetUtcNow() + SupportLinkLifetime, cancellationToken);
+        await email.SendAsync(
+            new EmailRequest(customer.Email, EmailTemplates.SupportLoginLink, new Dictionary<string, string> { ["link"] = link }),
+            cancellationToken);
+        return true;
+    }
+
+    private async Task<string> CreateLinkAsync(Guid customerId, LoginTokenPurpose purpose, string returnPath, DateTimeOffset expiresAt, CancellationToken cancellationToken)
     {
         var tenant = await tenants.GetAsync(tenantContext.RequiredTenantId, cancellationToken)
             ?? throw new InvalidOperationException("Tenant not found.");
@@ -67,7 +120,7 @@ internal sealed class CustomerLoginLinks(
             Id = Guid.CreateVersion7(),
             CustomerId = customerId,
             TokenHash = hash,
-            Purpose = LoginTokenPurpose.Receipt,
+            Purpose = purpose,
             ReturnPath = PublicUrls.SafeReturnPath(returnPath),
             CreatedAt = time.GetUtcNow(),
             ExpiresAt = expiresAt,

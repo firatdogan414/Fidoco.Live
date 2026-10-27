@@ -29,9 +29,26 @@ public sealed record PurchaseCompleted(
 /// <summary>Raised when a purchase is fully refunded; access is revoked.</summary>
 public sealed record PurchaseRefunded(Guid PurchaseId, IReadOnlyList<Guid> PurchaseLineIds) : IDomainEvent;
 
+/// <summary>One bought ticket line as support sees it; <see cref="AmountPaid"/> is what the buyer actually paid.</summary>
+public sealed record CustomerPurchaseLine(
+    Guid PurchaseId,
+    Guid PurchaseLineId,
+    string OrderNumber,
+    Guid EventId,
+    string EventTitle,
+    string TicketTypeName,
+    int Quantity,
+    long AmountPaid,
+    string Currency,
+    DateTimeOffset CompletedAt,
+    bool Refunded);
+
 /// <summary>Purchase lookups for other modules (current tenant).</summary>
 public interface IPurchaseQueries
 {
     /// <summary>True when the purchase has been refunded.</summary>
     Task<bool> IsRefundedAsync(Guid purchaseId, CancellationToken cancellationToken);
+
+    /// <summary>The customer's purchases, newest first.</summary>
+    Task<IReadOnlyList<CustomerPurchaseLine>> GetForCustomerAsync(Guid customerId, CancellationToken cancellationToken);
 }

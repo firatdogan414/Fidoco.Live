@@ -208,6 +208,12 @@ internal static class Commission
     }
 }
 
+internal static class OrderNumbers
+{
+    /// <summary>The order number shown on receipts and in the settlement: the first 12 hex digits of the purchase id.</summary>
+    public static string For(Guid purchaseId) => purchaseId.ToString("N")[..12].ToUpperInvariant();
+}
+
 internal static class Vat
 {
     /// <summary>The VAT included in a gross amount: 19900 at 25 % → 3980.</summary>

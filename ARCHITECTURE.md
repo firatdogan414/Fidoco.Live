@@ -1,6 +1,6 @@
 # Architecture
 
-Fidoco Live is a **modular monolith**: one ASP.NET Core application, one deployment, six modules with
+Fidoco Live is a **modular monolith**: one ASP.NET Core application, one deployment, seven modules with
 hard boundaries. The guiding rule is *simple and maintainable over clever*: no microservices, no
 mediator library, no generic repositories over EF Core. Endpoints use EF Core directly or a small class
 in the same module. Things that will need to scale are **interfaces with one implementation today**, not
@@ -14,8 +14,9 @@ Browser (SPA) ──► Fidoco.Host ── tenant resolution (Host header), auth
                  ├── Fidoco.Modules.Identity       customers (magic links), tenant/platform admins
                  ├── Fidoco.Modules.Catalog        events, streams (Mux), recordings, ticket types
                  ├── Fidoco.Modules.Payments       checkout (Stripe), purchases, refunds, settlement
-                 ├── Fidoco.Modules.Playback       entitlements, signed tokens, sessions, viewers
-                 └── Fidoco.Modules.Notifications  e-mail templates and sending
+                 ├── Fidoco.Modules.Playback       entitlements (purchases and comps), signed tokens, sessions, viewers
+                 ├── Fidoco.Modules.Notifications  e-mail templates and sending
+                 └── Fidoco.Modules.Support        buyer lookup, login links, comps, support log
                         ▲ every module references only Fidoco.Contracts + Fidoco.SharedKernel
 ```
 
@@ -47,8 +48,9 @@ Inside a module, code is organized by feature (`Features/` holds endpoint + logi
 | **Identity** | Customers (one per e-mail and tenant) with magic links; TenantAdmin and PlatformAdmin with passwords, invitations and resets; cookie schemes and policies; Data Protection keys in the database; GDPR erasure | `CustomerDeleted` | – |
 | **Catalog** | Events (draft → scheduled → live → ended), streams (Mux live streams, RTMP/key, status), recordings for replay, ticket types (kind, capacity, replay days), Mux webhooks, the capacity seam `ITicketAvailability` | `EventPublished`, `StreamWentLive`, `StreamWentIdle`, `EventEnded`, `RecordingReady` | – |
 | **Payments** | Checkout (Stripe), purchases with lines, Stripe webhooks, refunds, sales figures, commission and settlement | `PurchaseCompleted`, `PurchaseRefunded` | `CustomerDeleted` (anonymize) |
-| **Playback** | Entitlements (the right to watch), access policy, Mux signed tokens, one session per ticket, heartbeats, active viewers | – | `PurchaseCompleted` (grant), `PurchaseRefunded` (revoke), `CustomerDeleted` (delete) |
-| **Notifications** | Branded, localized e-mail templates; sends from Fidoco on behalf of the tenant (`"<Tenant> via Fidoco"`, reply-to the tenant) | – | `PurchaseCompleted` (receipt with magic link) |
+| **Playback** | Entitlements (the right to watch) from purchases and complimentary tickets (comps), access policy, Mux signed tokens, one session per ticket, heartbeats, active viewers | `ComplimentaryTicketGranted` | `PurchaseCompleted` (grant), `PurchaseRefunded` (revoke), `CustomerDeleted` (delete) |
+| **Notifications** | Branded, localized e-mail templates; sends from Fidoco on behalf of the tenant (`"<Tenant> via Fidoco"`, reply-to the tenant) | – | `PurchaseCompleted` (receipt with magic link), `ComplimentaryTicketGranted` (sign-in link) |
+| **Support** | The organizer's support tools: look up a buyer by e-mail (purchases, tickets, active session), send a new login link, grant and revoke comps; the support log (who, what, when). Owns only the log and composes the other modules through contracts | – | `CustomerDeleted` (anonymize log) |
 
 The core is industry-neutral: *Event, Stream, TicketType, Purchase, Entitlement*. Nothing about fights,
 rounds or results lives here.
@@ -82,7 +84,8 @@ rounds or results lives here.
 |---|---|---|---|
 | `PurchaseCompleted` | Payments | Playback grants entitlement; Notifications sends receipt | analytics, CRM, physical ticket issuing |
 | `PurchaseRefunded` | Payments | Playback revokes access | notification to buyer |
-| `CustomerDeleted` | Identity | Payments anonymizes; Playback deletes entitlements | any module holding personal data |
+| `CustomerDeleted` | Identity | Payments anonymizes; Playback deletes entitlements; Support anonymizes its log | any module holding personal data |
+| `ComplimentaryTicketGranted` | Playback | Notifications e-mails a sign-in link | – |
 | `EventPublished` | Catalog | – | announcements |
 | `StreamWentLive`, `StreamWentIdle`, `EventEnded` | Catalog | – | SignalR push to viewers, "we are live" e-mails, vertical modules |
 | `RecordingReady` | Catalog | – | "replay available" e-mails, clip library |
@@ -113,6 +116,19 @@ Idempotency is layered: processed webhook ids, "checkout already completed", and
   Heartbeats never touch the database. Refunds and erasure mark the entitlement revoked in the cache.
 - The client (`PlaybackSessionController`) retries transient failures with backoff without interrupting playback.
 - Active viewers per event: `IViewerPresence` (in memory today).
+
+### Support and complimentary tickets
+
+- `/admin/support/*` (TenantAdmin): search customers by part of the e-mail (`ICustomerAccounts.SearchAsync`), then one
+  view combining `IPurchaseQueries` (what was paid), `ICustomerTickets` (each entitlement evaluated with `AccessPolicy`
+  right now, plus whether `playback:active:{entitlementId}` is held, i.e. a device is watching) and the log.
+- A support login link is a normal single-use magic link that lives 24 hours instead of 15 minutes.
+- A comp is an `Entitlement` with `SourceType = "Comp"` (`SourceId` = its own id, so it can be granted again after
+  being revoked); access terms are copied from the event's ticket type. Comps never touch Payments: sales ignore them
+  and the settlement shows their count at 0 kr. Revoking marks the entitlement revoked in the database and the cache,
+  so a running player stops at its next heartbeat.
+- Every action is written to `support.SupportLog` with the admin's id and e-mail; viewing a customer is logged at most
+  once per admin and customer per 10 minutes. Entries are kept 12 months; erasure removes the customer from them.
 
 ### Authentication
 

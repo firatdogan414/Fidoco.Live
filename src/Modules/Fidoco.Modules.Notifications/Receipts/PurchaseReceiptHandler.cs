@@ -42,7 +42,7 @@ internal sealed class PurchaseReceiptHandler(
         var tenant = await tenants.GetAsync(tenantContext.RequiredTenantId, cancellationToken);
 
         var link = await loginLinks.CreateReceiptLinkAsync(
-            purchase.CustomerId, $"/e/{ev.Slug}/titta", LinkExpiry(ev.StartsAt, line.ReplayAccessDays), cancellationToken);
+            purchase.CustomerId, $"/e/{ev.Slug}/titta", LinkExpiry(ev.StartsAt, line.ReplayAccessDays, time.GetUtcNow()), cancellationToken);
 
         string Label(string key, IReadOnlyDictionary<string, string>? values = null) => texts.Text(language, EmailTemplates.Receipt, key, values);
         var rows = new List<EmailRow>();
@@ -66,11 +66,12 @@ internal sealed class PurchaseReceiptHandler(
             cancellationToken);
     }
 
-    private DateTimeOffset LinkExpiry(DateTimeOffset eventStartsAt, int? replayDays)
+    /// <summary>Until the ticket's access ends (at most 30 days after the event), but at least one day from now.</summary>
+    public static DateTimeOffset LinkExpiry(DateTimeOffset eventStartsAt, int? replayDays, DateTimeOffset now)
     {
         var accessEnds = eventStartsAt.AddDays(1 + (replayDays ?? 0));
         var latest = eventStartsAt + MaxLinkLifetimeAfterEvent;
-        var earliest = time.GetUtcNow().AddDays(1);
+        var earliest = now.AddDays(1);
         var expiry = accessEnds < latest ? accessEnds : latest;
         return expiry > earliest ? expiry : earliest;
     }

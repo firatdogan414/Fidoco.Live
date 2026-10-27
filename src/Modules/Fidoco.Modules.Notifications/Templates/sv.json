@@ -23,6 +23,20 @@
     "orderNumber": "Ordernummer",
     "purchaseDate": "Köpdatum"
   },
+  "support-login-link": {
+    "subject": "Ny inloggningslänk från {tenant}",
+    "heading": "Här är din inloggningslänk",
+    "intro": "{tenant} har skickat en ny inloggningslänk till dig. Länken gäller i 24 timmar och kan användas en gång.",
+    "button": "Logga in",
+    "outro": "Har du inte kontaktat {tenant} kan du ignorera det här mejlet."
+  },
+  "comp-ticket": {
+    "subject": "Din biljett: {eventTitle}",
+    "heading": "Du har fått en biljett!",
+    "intro": "{tenant} har gett dig en biljett ({ticketTypeName}) till {eventTitle}. Den är kostnadsfri.",
+    "button": "Titta på sändningen",
+    "outro": "Knappen loggar in dig direkt. Biljetten kan användas på en enhet åt gången."
+  },
   "admin-invite": {
     "subject": "Du är inbjuden som administratör för {tenant}",
     "heading": "Välkommen!",

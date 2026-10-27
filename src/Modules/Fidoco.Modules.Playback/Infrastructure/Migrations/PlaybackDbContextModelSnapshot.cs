@@ -37,8 +37,16 @@ namespace Fidoco.Modules.Playback.Infrastructure.Migrations
                     b.Property<Guid>("EventId")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<string>("GrantedBy")
+                        .HasMaxLength(254)
+                        .HasColumnType("nvarchar(254)");
+
                     b.Property<bool>("IncludesLive")
                         .HasColumnType("bit");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
 
                     b.Property<int?>("ReplayAccessDays")
                         .HasColumnType("int");
@@ -71,6 +79,8 @@ namespace Fidoco.Modules.Playback.Infrastructure.Migrations
                         .IsUnique();
 
                     b.HasIndex("TenantId", "CustomerId", "EventId");
+
+                    b.HasIndex("TenantId", "EventId", "SourceType");
 
                     b.ToTable("Entitlements", "playback");
                 });

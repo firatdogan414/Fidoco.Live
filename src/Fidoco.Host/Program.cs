@@ -8,6 +8,7 @@ using Fidoco.Modules.Identity;
 using Fidoco.Modules.Notifications;
 using Fidoco.Modules.Payments;
 using Fidoco.Modules.Playback;
+using Fidoco.Modules.Support;
 using Fidoco.Modules.Tenants;
 using Fidoco.SharedKernel.Persistence;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
@@ -45,7 +46,8 @@ builder.Services
     .AddNotificationsModule(configuration)
     .AddCatalogModule(configuration)
     .AddPaymentsModule(configuration)
-    .AddPlaybackModule(configuration);
+    .AddPlaybackModule(configuration)
+    .AddSupportModule(configuration);
 
 var app = builder.Build();
 
@@ -68,7 +70,8 @@ api.MapTenantsEndpoints()
     .MapNotificationsEndpoints()
     .MapCatalogEndpoints()
     .MapPaymentsEndpoints()
-    .MapPlaybackEndpoints();
+    .MapPlaybackEndpoints()
+    .MapSupportEndpoints();
 api.MapUploads();
 
 app.MapHub<LiveHub>("/hubs/live");

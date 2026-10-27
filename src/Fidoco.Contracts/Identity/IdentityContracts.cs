@@ -73,6 +73,9 @@ public static class FidocoClaims
 
 public sealed record CustomerInfo(Guid Id, string Email);
 
+/// <summary>A customer as support sees it.</summary>
+public sealed record CustomerProfile(Guid Id, string Email, DateTimeOffset CreatedAt, DateTimeOffset? LastLoginAt);
+
 /// <summary>Customer accounts of the current tenant (one account per e-mail and tenant).</summary>
 public interface ICustomerAccounts
 {
@@ -80,6 +83,13 @@ public interface ICustomerAccounts
     Task<Guid> GetOrCreateAsync(string email, CancellationToken cancellationToken);
 
     Task<CustomerInfo?> GetAsync(Guid customerId, CancellationToken cancellationToken);
+
+    Task<IReadOnlyList<CustomerInfo>> GetManyAsync(IReadOnlyCollection<Guid> customerIds, CancellationToken cancellationToken);
+
+    Task<CustomerProfile?> GetProfileAsync(Guid customerId, CancellationToken cancellationToken);
+
+    /// <summary>Customers whose e-mail contains <paramref name="emailPart"/> (case-insensitive), exact matches first.</summary>
+    Task<IReadOnlyList<CustomerProfile>> SearchAsync(string emailPart, int max, CancellationToken cancellationToken);
 }
 
 public interface ICustomerLoginLinks
@@ -89,6 +99,13 @@ public interface ICustomerLoginLinks
     /// The raw token only exists in the returned URL; the database stores its hash.
     /// </summary>
     Task<string> CreateReceiptLinkAsync(Guid customerId, string returnPath, DateTimeOffset expiresAt, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// E-mails the customer a new single-use login link (support: "I paid but cannot get in"). Valid for
+    /// 24 hours, so it still works when the buyer reads the mail later in the evening. Returns false when the
+    /// customer does not exist; throws when the e-mail cannot be sent.
+    /// </summary>
+    Task<bool> SendSupportLinkAsync(Guid customerId, string returnPath, CancellationToken cancellationToken);
 }
 
 public interface ICustomerSignIn
