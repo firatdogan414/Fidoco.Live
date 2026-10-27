@@ -42,7 +42,10 @@ export function ThankYouPage() {
   });
 
   useEffect(() => {
-    if (signedIn) void queryClient.invalidateQueries({ queryKey: ['me'] });
+    if (signedIn) {
+      void queryClient.invalidateQueries({ queryKey: ['me'] });
+      void queryClient.invalidateQueries({ queryKey: ['viewer-session'] });
+    }
   }, [signedIn, queryClient]);
 
   useEffect(() => {

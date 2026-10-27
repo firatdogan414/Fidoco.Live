@@ -50,14 +50,27 @@ internal sealed class AdminAccounts(
             cancellationToken);
     }
 
-    /// <summary>Consumes a link token and sets the password. Returns false for invalid, used or expired links.</summary>
+    /// <summary>
+    /// Consumes a link token and sets the password. Returns false for invalid, used or expired links.
+    /// A new password ends the admin's existing sessions (new security stamp) and voids every other
+    /// outstanding invitation or reset link.
+    /// </summary>
     public async Task<bool> SetPasswordAsync(AdminKind kind, Guid? tenantId, string token, string password, CancellationToken cancellationToken)
     {
         var hash = SecureTokens.Hash(token);
         var now = time.GetUtcNow();
-        var link = await db.AdminTokens.SingleOrDefaultAsync(
+        var link = await db.AdminTokens.AsNoTracking().SingleOrDefaultAsync(
             t => t.TokenHash == hash && t.AdminKind == kind && t.TenantId == tenantId, cancellationToken);
         if (link is null || link.ConsumedAt is not null || link.ExpiresAt <= now)
+        {
+            return false;
+        }
+
+        // Claim the link atomically, so two concurrent requests cannot both use it.
+        var claimed = await db.AdminTokens
+            .Where(t => t.Id == link.Id && t.ConsumedAt == null)
+            .ExecuteUpdateAsync(s => s.SetProperty(t => t.ConsumedAt, now), cancellationToken);
+        if (claimed == 0)
         {
             return false;
         }
@@ -67,26 +80,31 @@ internal sealed class AdminAccounts(
             var admin = await db.PlatformAdmins.SingleOrDefaultAsync(a => a.Id == link.AdminId, cancellationToken);
             if (admin is null) return false;
             admin.PasswordHash = platformHasher.HashPassword(admin, password);
+            admin.SecurityStamp = SecurityStamps.New();
         }
         else
         {
             var admin = await db.AdminUsers.SingleOrDefaultAsync(a => a.Id == link.AdminId, cancellationToken);
             if (admin is null) return false;
             admin.PasswordHash = tenantHasher.HashPassword(admin, password);
+            admin.SecurityStamp = SecurityStamps.New();
         }
 
-        link.ConsumedAt = now;
         await db.SaveChangesAsync(cancellationToken);
+        await db.AdminTokens
+            .Where(t => t.AdminKind == kind && t.AdminId == link.AdminId && t.ConsumedAt == null)
+            .ExecuteUpdateAsync(s => s.SetProperty(t => t.ConsumedAt, now), cancellationToken);
         return true;
     }
 
-    public static Task SignInAsync(HttpContext context, Guid adminId, string emailAddress, string role, Guid? tenantId)
+    public static Task SignInAsync(HttpContext context, Guid adminId, string emailAddress, string role, Guid? tenantId, string securityStamp)
     {
         var claims = new List<Claim>
         {
             new(FidocoClaims.UserId, adminId.ToString()),
             new(FidocoClaims.Email, emailAddress),
             new(ClaimTypes.Role, role),
+            new(FidocoClaims.SecurityStamp, securityStamp),
         };
         if (tenantId is not null)
         {

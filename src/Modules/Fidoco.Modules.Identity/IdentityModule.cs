@@ -13,6 +13,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 
 namespace Fidoco.Modules.Identity;
 
@@ -29,11 +30,28 @@ public static class IdentityModule
 
         services.AddAuthentication(AuthSchemes.Customer)
             .AddCookie(AuthSchemes.Customer, o => ConfigureCookie(o, "fidoco.customer", TimeSpan.FromDays(30)))
-            .AddCookie(AuthSchemes.Admin, o => ConfigureCookie(o, "fidoco.admin", TimeSpan.FromHours(12)));
+            .AddCookie(AuthSchemes.Admin, o =>
+            {
+                ConfigureCookie(o, "fidoco.admin", TimeSpan.FromHours(12));
+                o.Events.OnValidatePrincipal = AdminSessionValidator.ValidateAsync;
+            });
+
+        // TLS usually ends at the load balancer, so the app may see plain HTTP: never rely on the request scheme.
+        foreach (var scheme in new[] { AuthSchemes.Customer, AuthSchemes.Admin })
+        {
+            services.AddOptions<CookieAuthenticationOptions>(scheme).Configure<IHostEnvironment>((o, env) =>
+                o.Cookie.SecurePolicy = env.IsDevelopment() ? CookieSecurePolicy.SameAsRequest : CookieSecurePolicy.Always);
+        }
 
         services.AddScoped<IAuthorizationHandler, TenantMatchHandler>();
         services.AddAuthorizationBuilder()
             .AddPolicy(AuthPolicies.Customer, p => p
+                .AddAuthenticationSchemes(AuthSchemes.Customer)
+                .RequireAuthenticatedUser()
+                .RequireClaim(FidocoClaims.UserId)
+                .RequireAssertion(c => c.User.GetPurchaseLineScope() is null)
+                .AddRequirements(new TenantMatchRequirement()))
+            .AddPolicy(AuthPolicies.Viewer, p => p
                 .AddAuthenticationSchemes(AuthSchemes.Customer)
                 .RequireAuthenticatedUser()
                 .RequireClaim(FidocoClaims.UserId)
@@ -81,7 +99,6 @@ public static class IdentityModule
         options.Cookie.Name = name;
         options.Cookie.HttpOnly = true;
         options.Cookie.SameSite = SameSiteMode.Lax;
-        options.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
         options.ExpireTimeSpan = lifetime;
         options.SlidingExpiration = true;
 

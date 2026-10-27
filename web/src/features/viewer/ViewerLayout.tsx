@@ -4,11 +4,13 @@ import { Link, Outlet } from 'react-router';
 import { viewerApi } from '../../api/viewer';
 import { useTenant } from '../../app/tenant';
 import { useMe } from './useMe';
+import { useViewerSession } from './useViewerSession';
 
 export function ViewerLayout() {
   const { t } = useTranslation();
   const tenant = useTenant();
   const me = useMe();
+  const session = useViewerSession();
   const queryClient = useQueryClient();
 
   const logout = async () => {
@@ -32,7 +34,15 @@ export function ViewerLayout() {
               </button>
             </>
           ) : (
-            <Link to="/logga-in">{t('nav.login')}</Link>
+            <>
+              {/* A purchase-only session (right after paying) signs in with the magic link for account access. */}
+              <Link to="/logga-in">{t('nav.login')}</Link>
+              {session.data ? (
+                <button type="button" className="link-button" onClick={() => void logout()}>
+                  {t('nav.logout')}
+                </button>
+              ) : null}
+            </>
           )}
         </nav>
       </header>

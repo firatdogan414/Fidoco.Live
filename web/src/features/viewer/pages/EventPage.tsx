@@ -7,19 +7,19 @@ import { viewerApi } from '../../../api/viewer';
 import { ErrorMessage, Loading } from '../../../shared/components';
 import { useErrorText } from '../../../shared/errors';
 import { formatEventDate, formatMoney } from '../../../shared/format';
-import { useMe } from '../useMe';
+import { useViewerSession } from '../useViewerSession';
 
 export function EventPage() {
   const { slug = '' } = useParams();
   const { t } = useTranslation('viewer');
   const errorText = useErrorText();
   const navigate = useNavigate();
-  const me = useMe();
+  const session = useViewerSession();
   const event = useQuery({ queryKey: ['event', slug], queryFn: () => viewerApi.event(slug) });
   const access = useQuery({
     queryKey: ['access', event.data?.id],
     queryFn: () => viewerApi.access(event.data!.id),
-    enabled: !!event.data && !!me.data,
+    enabled: !!event.data && !!session.data,
   });
 
   const buy = useMutation({
@@ -68,7 +68,7 @@ export function EventPage() {
         {buy.isError && !(buy.error instanceof ApiError && buy.error.code === 'already_purchased') ? (
           <ErrorMessage>{errorText(buy.error)}</ErrorMessage>
         ) : null}
-        {!me.data && !hasTicket ? (
+        {!session.data && !hasTicket ? (
           <p className="small">
             <Link to={`/logga-in?returnPath=${encodeURIComponent(`/e/${ev.slug}/titta`)}`}>{t('event.signInToWatch')}</Link>
           </p>

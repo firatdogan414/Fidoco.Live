@@ -38,3 +38,15 @@ Deliberately left for later phases, in the suggested order. Phase 1 (the MVP) is
 - Admin: list of buyers per event (support), resend receipt, manual access grants.
 - Load test the token/heartbeat endpoints (target: 2 000 concurrent viewers per instance) before the first large event.
 - Legal review of the terms of purchase and privacy policy drafts (`web/src/i18n/locales/sv/legal.json`).
+
+## Security and correctness follow-ups (from the phase 1 review)
+
+- **Chargebacks:** handle `charge.dispute.created` (and `charge.dispute.closed`). Today a disputed payment keeps
+  its access: revoke on dispute (like a refund), restore if the dispute is won, and show disputes in sales and
+  settlement.
+- **Timing-based enumeration at admin sign-in:** `AdminAuthEndpoints.Login` and `PlatformAuthEndpoints.Login`
+  only hash the password when the e-mail exists, so the response time reveals which addresses are admins.
+  Verify against a dummy hash when the user is missing (or otherwise equalize the work).
+- **Order of Mux asset events:** `MuxWebhookEndpoint.ApplyAsset` applies `video.asset.*` events in arrival
+  order (e.g. a late `errored` can overwrite `ready`, or `ready` arrive before `created`). Compare the event's
+  `created_at` with a per-recording status timestamp, as is already done for live stream active/idle.

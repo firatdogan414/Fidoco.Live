@@ -15,7 +15,7 @@ internal static partial class TestIdentity
     {
         using var scope = factory.Services.CreateScope();
         using var _ = scope.ServiceProvider.GetRequiredService<ITenantContext>().Use(tenant.Id);
-        return (await scope.ServiceProvider.GetRequiredService<ICustomerAccounts>().GetOrCreateAsync(email, CancellationToken.None)).Id;
+        return await scope.ServiceProvider.GetRequiredService<ICustomerAccounts>().GetOrCreateAsync(email, CancellationToken.None);
     }
 
     public static async Task CreateTenantAdminAsync(this FidocoApiFactory factory, TestTenant tenant, string email, string password)

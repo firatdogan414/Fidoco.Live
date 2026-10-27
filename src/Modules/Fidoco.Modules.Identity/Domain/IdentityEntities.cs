@@ -65,6 +65,9 @@ internal sealed class AdminUser : ITenantOwned
 
     public string? PasswordHash { get; set; }
 
+    /// <summary>Changes with the password; admin cookies carrying an older stamp are rejected.</summary>
+    public string SecurityStamp { get; set; } = SecurityStamps.New();
+
     public required string Role { get; set; }
 
     public DateTimeOffset CreatedAt { get; set; }
@@ -81,9 +84,17 @@ internal sealed class PlatformAdmin
 
     public string? PasswordHash { get; set; }
 
+    /// <summary>Changes with the password; admin cookies carrying an older stamp are rejected.</summary>
+    public string SecurityStamp { get; set; } = SecurityStamps.New();
+
     public DateTimeOffset CreatedAt { get; set; }
 
     public DateTimeOffset? LastLoginAt { get; set; }
+}
+
+internal static class SecurityStamps
+{
+    public static string New() => Guid.NewGuid().ToString("N");
 }
 
 internal enum AdminKind

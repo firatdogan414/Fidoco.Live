@@ -65,6 +65,11 @@ export interface Me {
   email: string;
 }
 
+/** "purchase": signed in right after paying, may only watch that purchase (no account access). */
+export interface ViewerSession {
+  scope: 'account' | 'purchase';
+}
+
 export interface MyPurchase {
   purchaseId: string;
   eventId: string;

@@ -28,3 +28,10 @@ public sealed record PurchaseCompleted(
 
 /// <summary>Raised when a purchase is fully refunded; access is revoked.</summary>
 public sealed record PurchaseRefunded(Guid PurchaseId, IReadOnlyList<Guid> PurchaseLineIds) : IDomainEvent;
+
+/// <summary>Purchase lookups for other modules (current tenant).</summary>
+public interface IPurchaseQueries
+{
+    /// <summary>True when the purchase has been refunded.</summary>
+    Task<bool> IsRefundedAsync(Guid purchaseId, CancellationToken cancellationToken);
+}

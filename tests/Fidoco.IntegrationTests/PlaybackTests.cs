@@ -1,4 +1,5 @@
 using System.Net;
+using Microsoft.EntityFrameworkCore;
 using System.Net.Http.Json;
 using Fidoco.IntegrationTests.Infrastructure;
 using Microsoft.Extensions.Caching.Distributed;
@@ -149,6 +150,84 @@ public sealed class PlaybackTests(FidocoApiFactory factory) : IClassFixture<Fido
     }
 
     [Fact]
+    public async Task Refund_that_arrives_before_the_purchase_is_redelivered_and_then_revokes_access()
+    {
+        var e = await factory.CreatePublishedEventAsync();
+        var viewer = factory.ClientFor(e.Tenant.Host);
+        var (checkout, sessionId) = await factory.StartCheckoutAsync(viewer, e.TicketTypeId);
+        var paymentIntent = "pi_early_" + sessionId;
+        var refundEventId = "evt_refund_" + sessionId;
+
+        var early = await factory.PostStripeWebhookAsync("charge.refunded", TestPayments.ChargeObject(paymentIntent), eventId: refundEventId);
+        await factory.PostStripeWebhookAsync("checkout.session.completed", TestPayments.SessionObject(sessionId, "early@example.com", paymentIntent: paymentIntent)).EnsureSuccessAsync();
+        var redelivered = await factory.PostStripeWebhookAsync("charge.refunded", TestPayments.ChargeObject(paymentIntent), eventId: refundEventId);
+        await factory.DrainOutboxAsync();
+        await viewer.GetAsync($"/api/v1/checkout/{checkout.CheckoutId}");
+        await factory.PostMuxWebhookAsync("video.live_stream.active", e.ProviderStreamId, factory.Time.GetUtcNow());
+
+        Assert.Equal(HttpStatusCode.ServiceUnavailable, early.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, redelivered.StatusCode);
+        var start = await viewer.StartSessionAsync(e.Event.Id);
+        Assert.Equal(HttpStatusCode.Forbidden, start.StatusCode);
+        Assert.Contains("no_ticket", await start.Content.ReadAsStringAsync());
+    }
+
+    [Fact]
+    public async Task Grant_retried_after_the_refund_was_handled_does_not_give_access()
+    {
+        await using var isolated = new FidocoApiFactory();
+        var e = await isolated.CreatePublishedEventAsync();
+        var viewer = isolated.ClientFor(e.Tenant.Host);
+        var (checkout, sessionId) = await isolated.StartCheckoutAsync(viewer, e.TicketTypeId);
+        await isolated.PostStripeWebhookAsync("checkout.session.completed", TestPayments.SessionObject(sessionId, "late@example.com", paymentIntent: "pi_late_" + sessionId)).EnsureSuccessAsync();
+
+        // The grant handler failed once and is waiting for its retry when the refund is handled.
+        await DelayPaymentsOutboxHandlerAsync(isolated, "GrantEntitlementsOnPurchase", TimeSpan.FromMinutes(5));
+        await isolated.PostStripeWebhookAsync("charge.refunded", TestPayments.ChargeObject("pi_late_" + sessionId)).EnsureSuccessAsync();
+        await isolated.DrainOutboxAsync();
+        isolated.Time.Advance(TimeSpan.FromMinutes(6));
+        await isolated.DrainOutboxAsync();
+        await viewer.GetAsync($"/api/v1/checkout/{checkout.CheckoutId}");
+        await isolated.PostMuxWebhookAsync("video.live_stream.active", e.ProviderStreamId, isolated.Time.GetUtcNow());
+
+        var start = await viewer.StartSessionAsync(e.Event.Id);
+        Assert.Equal(HttpStatusCode.Forbidden, start.StatusCode);
+        Assert.Contains("no_ticket", await start.Content.ReadAsStringAsync());
+    }
+
+    private static async Task DelayPaymentsOutboxHandlerAsync(FidocoApiFactory app, string handlerName, TimeSpan delay)
+    {
+        using var scope = app.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<Fidoco.Modules.Payments.Infrastructure.PaymentsDbContext>();
+        var until = app.Time.GetUtcNow() + delay;
+        var updated = await db.OutboxMessages
+            .Where(m => m.ProcessedAt == null && m.HandlerType.Contains(handlerName))
+            .ExecuteUpdateAsync(s => s.SetProperty(m => m.NextAttemptAt, until));
+        Assert.True(updated > 0);
+    }
+
+    [Fact]
+    public async Task Heartbeat_rate_limit_counts_per_customer_not_per_session_id()
+    {
+        // The session id is chosen by the caller, so partitioning on it gives every made-up id its own budget.
+        await using var strict = new HeartbeatLimitedFactory();
+        var (e, viewer, _) = await strict.LiveEventWithBuyerAsync();
+        var other = strict.ClientFor(e.Tenant.Host);
+        await strict.BuyAsync(other, e.TicketTypeId, $"other-{Guid.NewGuid():N}@example.com");
+
+        var statuses = new List<HttpStatusCode>();
+        for (var i = 0; i < 3; i++)
+        {
+            statuses.Add((await viewer.HeartbeatAsync($"made-up-{i}")).StatusCode);
+        }
+
+        var otherCustomer = await other.HeartbeatAsync("made-up-x");
+
+        Assert.Equal([HttpStatusCode.NotFound, HttpStatusCode.NotFound, HttpStatusCode.TooManyRequests], statuses);
+        Assert.Equal(HttpStatusCode.NotFound, otherCustomer.StatusCode);
+    }
+
+    [Fact]
     public async Task Replay_is_available_after_the_event_until_the_window_closes()
     {
         await using var isolated = new FidocoApiFactory();
@@ -214,4 +293,7 @@ public sealed class PlaybackTests(FidocoApiFactory factory) : IClassFixture<Fido
         var entitlementId = System.Text.Json.JsonDocument.Parse(json!).RootElement.GetProperty("EntitlementId").GetGuid();
         return $"playback:active:{entitlementId}";
     }
+
+    private sealed class HeartbeatLimitedFactory()
+        : FidocoApiFactory("Sqlite", null, new Dictionary<string, string?> { ["RateLimiting:HeartbeatPerMinute"] = "2" });
 }

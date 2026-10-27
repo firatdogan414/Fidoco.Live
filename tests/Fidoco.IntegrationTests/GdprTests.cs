@@ -20,6 +20,7 @@ public sealed class GdprTests(FidocoApiFactory factory) : IClassFixture<FidocoAp
         var (e, viewer, email) = await factory.LiveEventWithBuyerAsync();
         var session = await viewer.StartSessionOkAsync(e.Event.Id);
         var customerId = await CustomerIdAsync(e.Tenant.Id, email);
+        await factory.SignInCustomerAsync(viewer, email);
 
         var wrongConfirm = await viewer.SendAsync(new HttpRequestMessage(HttpMethod.Delete, "/api/v1/me") { Content = JsonContent.Create(new { confirmEmail = "other@example.com" }) });
         var delete = await viewer.SendAsync(new HttpRequestMessage(HttpMethod.Delete, "/api/v1/me") { Content = JsonContent.Create(new { confirmEmail = email }) });

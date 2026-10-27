@@ -25,11 +25,15 @@ internal sealed class PaymentWebhookProcessor(
 {
     public const string Provider = "stripe";
 
-    public async Task ProcessAsync(PaymentWebhookEvent webhook, CancellationToken cancellationToken)
+    /// <summary>
+    /// Returns false when the event cannot be applied yet and must be delivered again (nothing is stored,
+    /// so the provider's retry processes it from scratch).
+    /// </summary>
+    public async Task<bool> ProcessAsync(PaymentWebhookEvent webhook, CancellationToken cancellationToken)
     {
         if (await db.ProcessedWebhookEvents.AnyAsync(w => w.Provider == Provider && w.EventId == webhook.EventId, cancellationToken))
         {
-            return;
+            return true;
         }
 
         db.ProcessedWebhookEvents.Add(new ProcessedWebhookEvent { Provider = Provider, EventId = webhook.EventId, ProcessedAt = time.GetUtcNow() });
@@ -38,17 +42,16 @@ internal sealed class PaymentWebhookProcessor(
         {
             case PaymentWebhookType.CheckoutCompleted or PaymentWebhookType.CheckoutAsyncSucceeded when webhook.Paid:
                 await InTenantOfCheckout(webhook, checkout => CompleteAsync(checkout, webhook, cancellationToken), cancellationToken);
-                return;
+                return true;
             case PaymentWebhookType.CheckoutAsyncFailed or PaymentWebhookType.CheckoutExpired:
                 await InTenantOfCheckout(webhook, checkout => CloseAsync(checkout, webhook, cancellationToken), cancellationToken);
-                return;
+                return true;
             case PaymentWebhookType.ChargeRefunded when webhook.FullyRefunded:
-                await RefundAsync(webhook, cancellationToken);
-                return;
+                return await RefundAsync(webhook, cancellationToken);
             default:
                 // Unpaid "completed" (async methods: wait for async_payment_succeeded), partial refunds, other types.
                 await SaveAsync(cancellationToken);
-                return;
+                return true;
         }
     }
 
@@ -92,23 +95,7 @@ internal sealed class PaymentWebhookProcessor(
             logger.LogWarning("Checkout {CheckoutId} paid {Amount} but expected {Expected}", checkout.Id, amount, expected);
         }
 
-        Guid customerId;
-        if (checkout.CustomerId is { } signedInCustomer)
-        {
-            customerId = signedInCustomer;
-        }
-        else
-        {
-            var account = await customers.GetOrCreateAsync(email, cancellationToken);
-            customerId = account.Id;
-            if (!account.Created)
-            {
-                // The e-mail typed on the payment page is unverified, so the paying browser must not be signed
-                // into an account that already existed; the owner signs in with the receipt link instead.
-                checkout.BrowserNonceHash = null;
-            }
-        }
-
+        var customerId = checkout.CustomerId ?? await customers.GetOrCreateAsync(email, cancellationToken);
         var now = time.GetUtcNow();
         var purchase = Purchase.Complete(checkout, customerId, email.Trim(), amount, webhook.PaymentIntentId, now);
         db.Purchases.Add(purchase);
@@ -141,22 +128,31 @@ internal sealed class PaymentWebhookProcessor(
         await SaveAsync(cancellationToken);
     }
 
-    private async Task RefundAsync(PaymentWebhookEvent webhook, CancellationToken cancellationToken)
+    private async Task<bool> RefundAsync(PaymentWebhookEvent webhook, CancellationToken cancellationToken)
     {
+        if (webhook.PaymentIntentId is null)
+        {
+            await SaveAsync(cancellationToken);
+            return true;
+        }
+
         var tenantId = await db.Purchases.IgnoreQueryFilters()
-            .Where(p => p.ProviderPaymentIntentId == webhook.PaymentIntentId && webhook.PaymentIntentId != null)
+            .Where(p => p.ProviderPaymentIntentId == webhook.PaymentIntentId)
             .Select(p => (Guid?)p.TenantId)
             .FirstOrDefaultAsync(cancellationToken);
         if (tenantId is null)
         {
-            await SaveAsync(cancellationToken);
-            return;
+            // The refund arrived before the purchase (Stripe does not order events, and the completion may
+            // still be retrying). Marking it processed would lose it, so ask Stripe to deliver it again.
+            logger.LogWarning("Refund {EventId} for unknown payment {PaymentIntentId}; asking for redelivery", webhook.EventId, webhook.PaymentIntentId);
+            return false;
         }
 
         using var _ = tenant.Use(tenantId);
         var purchase = await db.Purchases.Include(p => p.Lines).SingleAsync(p => p.ProviderPaymentIntentId == webhook.PaymentIntentId, cancellationToken);
         purchase.Refund(time.GetUtcNow());
         await SaveAsync(cancellationToken);
+        return true;
     }
 
     /// <summary>Returns false when a concurrent delivery already stored the same event or purchase.</summary>

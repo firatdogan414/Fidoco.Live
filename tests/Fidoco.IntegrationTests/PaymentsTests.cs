@@ -11,6 +11,8 @@ public sealed class PaymentsTests(FidocoApiFactory factory) : IClassFixture<Fido
 {
     private sealed record Sales(Guid EventId, int TicketsSold, int TicketsRefunded, long Revenue);
 
+    private sealed record SessionScope(string Scope);
+
     private sealed record MyPurchase(Guid PurchaseId, Guid EventId, string EventTitle, long Amount, string Status);
 
     [Fact]
@@ -27,6 +29,7 @@ public sealed class PaymentsTests(FidocoApiFactory factory) : IClassFixture<Fido
         await factory.PostStripeWebhookAsync("checkout.session.completed", TestPayments.SessionObject(sessionId, email)).EnsureSuccessAsync();
         await factory.DrainOutboxAsync();
         var completed = await buyer.GetFromJsonAsync<CheckoutStatus>($"/api/v1/checkout/{checkout.CheckoutId}");
+        var session = await buyer.GetFromJsonAsync<SessionScope>("/api/v1/auth/session");
         var me = await buyer.GetAsync("/api/v1/me");
 
         Assert.Equal(19900, request.UnitAmount);
@@ -35,7 +38,8 @@ public sealed class PaymentsTests(FidocoApiFactory factory) : IClassFixture<Fido
         Assert.Equal("pending", pending!.Status);
         Assert.Equal("completed", completed!.Status);
         Assert.True(completed.SignedIn);
-        Assert.Equal(HttpStatusCode.OK, me.StatusCode);
+        Assert.Equal("purchase", session!.Scope);
+        Assert.Equal(HttpStatusCode.Forbidden, me.StatusCode);
 
         var receipt = Assert.Single(factory.Emails.To(email));
         Assert.Equal($"Kvitto: {e.Event.Title}", receipt.Subject);
@@ -79,20 +83,35 @@ public sealed class PaymentsTests(FidocoApiFactory factory) : IClassFixture<Fido
     }
 
     [Fact]
-    public async Task Paying_with_an_existing_customers_email_does_not_sign_the_paying_browser_into_that_account()
+    public async Task Paying_with_someone_elses_email_lets_the_browser_watch_its_purchase_but_not_use_the_account()
     {
         // The e-mail typed on the payment page is unverified: anyone can enter someone else's address.
         var e = await factory.CreatePublishedEventAsync();
+        var other = await factory.CreatePublishedEventAsync(e.Tenant);
         var victimEmail = $"victim-{Guid.NewGuid():N}@example.com";
-        await factory.CreateCustomerAsync(e.Tenant, victimEmail);
+        var victim = factory.ClientFor(e.Tenant.Host);
+        await factory.BuyAsync(victim, other.TicketTypeId, victimEmail);
+        await factory.PostMuxWebhookAsync("video.live_stream.active", e.ProviderStreamId, factory.Time.GetUtcNow()).EnsureSuccessAsync();
+        await factory.PostMuxWebhookAsync("video.live_stream.active", other.ProviderStreamId, factory.Time.GetUtcNow()).EnsureSuccessAsync();
         var attacker = factory.ClientFor(e.Tenant.Host);
 
         var status = await factory.BuyAsync(attacker, e.TicketTypeId, victimEmail);
 
-        Assert.Equal("completed", status.Status);
-        Assert.False(status.SignedIn);
-        Assert.Equal(HttpStatusCode.Unauthorized, (await attacker.GetAsync("/api/v1/me")).StatusCode);
-        Assert.Single(factory.Emails.To(victimEmail));
+        Assert.True(status.SignedIn);
+        await attacker.StartSessionOkAsync(e.Event.Id);
+        Assert.Equal(HttpStatusCode.Forbidden, (await attacker.PostAsync($"/api/v1/events/{other.Event.Id}/playback-sessions", null)).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, (await attacker.GetAsync("/api/v1/me")).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, (await attacker.GetAsync("/api/v1/me/purchases")).StatusCode);
+        var delete = await attacker.SendAsync(new HttpRequestMessage(HttpMethod.Delete, "/api/v1/me") { Content = JsonContent.Create(new { confirmEmail = victimEmail }) });
+        Assert.Equal(HttpStatusCode.Forbidden, delete.StatusCode);
+
+        // Buying again from the limited session is anonymous: the victim's address is not pre-filled.
+        var (again, _) = await factory.StartCheckoutAsync(attacker, other.TicketTypeId);
+        Assert.Null(factory.Payments.Checkouts[again.CheckoutId].Request.CustomerEmail);
+
+        // The address owner still has full access with the magic link.
+        await factory.SignInCustomerAsync(victim, victimEmail);
+        Assert.Equal(2, (await victim.GetFromJsonAsync<List<MyPurchase>>("/api/v1/me/purchases"))!.Count);
     }
 
     [Fact]
@@ -192,7 +211,9 @@ public sealed class PaymentsTests(FidocoApiFactory factory) : IClassFixture<Fido
     {
         var e = await factory.CreatePublishedEventAsync();
         var buyer = factory.ClientFor(e.Tenant.Host);
-        await factory.BuyAsync(buyer, e.TicketTypeId, $"twice-{Guid.NewGuid():N}@example.com");
+        var email = $"twice-{Guid.NewGuid():N}@example.com";
+        await factory.BuyAsync(buyer, e.TicketTypeId, email);
+        await factory.SignInCustomerAsync(buyer, email);
 
         var response = await buyer.PostAsJsonAsync("/api/v1/checkout", new { ticketTypeId = e.TicketTypeId });
         var purchases = await buyer.GetFromJsonAsync<List<MyPurchase>>("/api/v1/me/purchases");

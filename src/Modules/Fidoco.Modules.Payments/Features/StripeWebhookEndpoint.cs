@@ -31,8 +31,9 @@ internal static class StripeWebhookEndpoint
             return ApiResults.BadRequest("invalid_signature");
         }
 
-        // An exception here returns 500 and Stripe retries the delivery (with backoff, for days).
-        await processor.ProcessAsync(webhook, cancellationToken);
-        return Results.Ok();
+        // A non-2xx answer (or an exception) makes Stripe retry the delivery with backoff, for up to three days.
+        return await processor.ProcessAsync(webhook, cancellationToken)
+            ? Results.Ok()
+            : ApiResults.Problem(StatusCodes.Status503ServiceUnavailable, "retry_later");
     }
 }

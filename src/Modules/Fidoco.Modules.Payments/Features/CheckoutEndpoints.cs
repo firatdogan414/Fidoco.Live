@@ -13,6 +13,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -51,6 +52,7 @@ internal static class CheckoutEndpoints
         ITenantDirectory tenants,
         PublicUrls urls,
         IOptions<PaymentsOptions> options,
+        IHostEnvironment environment,
         TimeProvider time,
         ILoggerFactory loggers,
         CancellationToken cancellationToken)
@@ -152,7 +154,8 @@ internal static class CheckoutEndpoints
         context.Response.Cookies.Append(NonceCookie, nonce, new CookieOptions
         {
             HttpOnly = true,
-            Secure = context.Request.IsHttps,
+            // TLS usually ends at the load balancer, so the request scheme says nothing outside Development.
+            Secure = !environment.IsDevelopment() || context.Request.IsHttps,
             SameSite = SameSiteMode.Lax,
             Path = "/api/v1/checkout",
             MaxAge = TimeSpan.FromHours(2),
@@ -165,6 +168,7 @@ internal static class CheckoutEndpoints
         HttpContext context,
         PaymentsDbContext db,
         ICustomerSignIn signIn,
+        IHostEnvironment environment,
         TimeProvider time,
         CancellationToken cancellationToken)
     {
@@ -174,11 +178,15 @@ internal static class CheckoutEndpoints
             return ApiResults.NotFound("checkout_not_found");
         }
 
-        var signedIn = checkout.CustomerId is not null && context.User.GetCustomerId() == checkout.CustomerId;
+        var lineIds = checkout.PurchaseId is { } purchaseId
+            ? await db.PurchaseLines.Where(l => l.PurchaseId == purchaseId).Select(l => l.Id).ToListAsync(cancellationToken)
+            : [];
+        var signedIn = CanWatch(context.User, checkout.CustomerId, lineIds);
         var now = time.GetUtcNow();
         if (!signedIn
             && checkout.Status == CheckoutStatus.Completed
             && checkout.CustomerId is { } customerId
+            && lineIds.Count > 0
             && checkout.NonceUsedAt is null
             && checkout.CompletedAt is { } completedAt && now - completedAt <= DirectSignInWindow
             && context.Request.Cookies.TryGetValue(NonceCookie, out var nonce)
@@ -187,13 +195,31 @@ internal static class CheckoutEndpoints
         {
             checkout.NonceUsedAt = now;
             await db.SaveChangesAsync(cancellationToken);
-            await signIn.SignInAsync(context, customerId, cancellationToken);
-            context.Response.Cookies.Delete(NonceCookie, new CookieOptions { Path = "/api/v1/checkout" });
+            // The e-mail typed on the payment page is unverified, so this browser may only watch what it paid
+            // for. Account access (purchases, e-mail, erasure) needs the magic link sent to that address.
+            await signIn.SignInForPurchaseAsync(context, customerId, lineIds, cancellationToken);
+            context.Response.Cookies.Delete(NonceCookie, new CookieOptions
+            {
+                Path = "/api/v1/checkout",
+                Secure = !environment.IsDevelopment() || context.Request.IsHttps,
+            });
             signedIn = true;
         }
 
         return Results.Ok(new CheckoutStatusResponse(
             checkout.Id, checkout.Status.ToString().ToLowerInvariant(), checkout.EventId, checkout.EventSlug, signedIn));
+    }
+
+    /// <summary>The account itself, or a purchase session that covers this checkout's purchase.</summary>
+    private static bool CanWatch(System.Security.Claims.ClaimsPrincipal user, Guid? checkoutCustomerId, IReadOnlyList<Guid> lineIds)
+    {
+        if (checkoutCustomerId is null || user.GetViewerCustomerId() != checkoutCustomerId)
+        {
+            return false;
+        }
+
+        var scope = user.GetPurchaseLineScope();
+        return scope is null || (lineIds.Count > 0 && lineIds.All(scope.Contains));
     }
 
     private static string Hash(string value) => Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(value))).ToLowerInvariant();

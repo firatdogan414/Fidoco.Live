@@ -1,8 +1,10 @@
 using Fidoco.Contracts.Identity;
+using Fidoco.Contracts.Payments;
 using Fidoco.Modules.Payments.Features;
 using Fidoco.SharedKernel.Domain;
 using Fidoco.Modules.Payments.Infrastructure;
 using Fidoco.Modules.Payments.Infrastructure.Gateway;
+using Fidoco.Modules.Payments.Integration;
 using Fidoco.SharedKernel.Persistence;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.Configuration;
@@ -36,6 +38,7 @@ public static class PaymentsModule
         services.AddSingleton<IPaymentWebhookParser, StripeWebhookParser>();
         services.AddHealthChecks().AddCheck<StripeHealthCheck>("stripe", tags: ["external"]);
         services.AddScoped<PaymentWebhookProcessor>();
+        services.AddScoped<IPurchaseQueries, PurchaseQueries>();
         services.AddDomainEventHandler<CustomerDeleted, AnonymizePurchasesOnCustomerDeleted>();
         services.AddScoped<IDataRetentionTask, PaymentsRetention>();
         return services;

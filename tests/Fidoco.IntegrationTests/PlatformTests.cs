@@ -4,6 +4,7 @@ using Fidoco.IntegrationTests.Infrastructure;
 using Fidoco.Modules.Identity.Domain;
 using Fidoco.Modules.Identity.Infrastructure;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Fidoco.IntegrationTests;
@@ -110,6 +111,66 @@ public sealed class PlatformTests(FidocoApiFactory factory) : IClassFixture<Fido
         Assert.Equal(HttpStatusCode.NoContent, set.StatusCode);
         Assert.Equal(HttpStatusCode.BadRequest, reuse.StatusCode);
         Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/api/v1/admin/me")).StatusCode);
+    }
+
+    [Fact]
+    public async Task Password_change_ends_existing_admin_sessions_and_outstanding_links()
+    {
+        var tenant = await factory.CreateTenantAsync();
+        var email = $"stamp-{Guid.NewGuid():N}@example.com";
+        await factory.CreateTenantAdminAsync(tenant, email, "Old-password-1");
+        var stolen = factory.ClientFor(tenant.Host);
+        await stolen.SignInAdminAsync(email, "Old-password-1");
+        var anonymous = factory.ClientFor(tenant.Host);
+        await anonymous.PostAsJsonAsync("/api/v1/admin/auth/reset-request", new { email }).EnsureSuccessAsync();
+        await anonymous.PostAsJsonAsync("/api/v1/admin/auth/reset-request", new { email }).EnsureSuccessAsync();
+        var tokens = factory.Emails.To(email).Select(m => TestIdentity.ExtractToken(m.Text)).ToList();
+        var before = await stolen.GetAsync("/api/v1/admin/me");
+
+        await anonymous.PostAsJsonAsync("/api/v1/admin/auth/set-password", new { token = tokens[0], password = "New-password-1" }).EnsureSuccessAsync();
+        var afterChange = await stolen.GetAsync("/api/v1/admin/me");
+        var otherLink = await anonymous.PostAsJsonAsync("/api/v1/admin/auth/set-password", new { token = tokens[1], password = "Attacker-pass-1" });
+        var fresh = factory.ClientFor(tenant.Host);
+        await fresh.SignInAdminAsync(email, "New-password-1");
+
+        Assert.Equal(2, tokens.Count);
+        Assert.Equal(HttpStatusCode.OK, before.StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, afterChange.StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, otherLink.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await fresh.GetAsync("/api/v1/admin/me")).StatusCode);
+    }
+
+    [Fact]
+    public async Task Admin_created_before_security_stamps_can_still_sign_in()
+    {
+        var tenant = await factory.CreateTenantAsync();
+        var email = $"legacy-{Guid.NewGuid():N}@example.com";
+        await factory.CreateTenantAdminAsync(tenant, email, "Old-password-1");
+        using (var scope = factory.Services.CreateScope())
+        {
+            // The migration gives existing rows an empty stamp.
+            var db = scope.ServiceProvider.GetRequiredService<IdentityDbContext>();
+            await db.AdminUsers.IgnoreQueryFilters().Where(a => a.Email == email).ExecuteUpdateAsync(s => s.SetProperty(a => a.SecurityStamp, ""));
+        }
+
+        var client = factory.ClientFor(tenant.Host);
+        await client.SignInAdminAsync(email, "Old-password-1");
+
+        Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/api/v1/admin/me")).StatusCode);
+    }
+
+    [Fact]
+    public async Task Platform_admin_password_change_ends_existing_sessions()
+    {
+        var email = await CreatePlatformAdminAsync();
+        var stolen = await PlatformClientAsync(email);
+        var anonymous = factory.ClientFor(FidocoApiFactory.PlatformHost);
+        await anonymous.PostAsJsonAsync("/api/v1/platform/auth/reset-request", new { email }).EnsureSuccessAsync();
+        var token = TestIdentity.ExtractToken(factory.Emails.To(email).Last().Text);
+
+        await anonymous.PostAsJsonAsync("/api/v1/platform/auth/set-password", new { token, password = "New-platform-1" }).EnsureSuccessAsync();
+
+        Assert.Equal(HttpStatusCode.Unauthorized, (await stolen.GetAsync("/api/v1/platform/me")).StatusCode);
     }
 
     [Fact]
