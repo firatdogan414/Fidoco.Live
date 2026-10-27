@@ -96,7 +96,8 @@ POST /checkout ──► Catalog: ticket on sale? ──► ITicketAvailability.
 Stripe webhook ──► signature ──► dedupe (event id) ──► find checkout (cross-tenant) ──► Use(tenant)
                  ──► customer get-or-create ──► Purchase + lines + PurchaseCompleted (one transaction)
 outbox ──► Playback: Entitlement   ──► Notifications: receipt with reusable magic link
-thank-you page ──► GET /checkout/{id}: same browser (HttpOnly nonce) is signed in directly
+thank-you page ──► GET /checkout/{id}: same browser (HttpOnly nonce) is signed in directly,
+                   unless the (unverified) checkout e-mail belongs to an account that already existed
 ```
 
 Idempotency is layered: processed webhook ids, "checkout already completed", and a unique purchase per checkout.

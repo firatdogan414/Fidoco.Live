@@ -13,13 +13,13 @@ namespace Fidoco.Modules.Identity.Integration;
 
 internal sealed class CustomerAccounts(IdentityDbContext db, TimeProvider time) : ICustomerAccounts
 {
-    public async Task<Guid> GetOrCreateAsync(string email, CancellationToken cancellationToken)
+    public async Task<CustomerAccount> GetOrCreateAsync(string email, CancellationToken cancellationToken)
     {
         var normalized = Emails.Normalize(email);
         var existing = await FindIdAsync(normalized, cancellationToken);
         if (existing is not null)
         {
-            return existing.Value;
+            return new CustomerAccount(existing.Value, Created: false);
         }
 
         var customer = new Customer { Id = Guid.CreateVersion7(), Email = normalized, CreatedAt = time.GetUtcNow() };
@@ -27,13 +27,14 @@ internal sealed class CustomerAccounts(IdentityDbContext db, TimeProvider time) 
         try
         {
             await db.SaveChangesAsync(cancellationToken);
-            return customer.Id;
+            return new CustomerAccount(customer.Id, Created: true);
         }
         catch (DbUpdateException)
         {
             // Created concurrently (unique index on tenant + email): use the winner.
             db.Entry(customer).State = EntityState.Detached;
-            return await FindIdAsync(normalized, cancellationToken) ?? throw new InvalidOperationException("Customer could not be created.");
+            var winner = await FindIdAsync(normalized, cancellationToken) ?? throw new InvalidOperationException("Customer could not be created.");
+            return new CustomerAccount(winner, Created: false);
         }
     }
 

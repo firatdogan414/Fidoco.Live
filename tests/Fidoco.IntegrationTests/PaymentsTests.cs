@@ -79,6 +79,23 @@ public sealed class PaymentsTests(FidocoApiFactory factory) : IClassFixture<Fido
     }
 
     [Fact]
+    public async Task Paying_with_an_existing_customers_email_does_not_sign_the_paying_browser_into_that_account()
+    {
+        // The e-mail typed on the payment page is unverified: anyone can enter someone else's address.
+        var e = await factory.CreatePublishedEventAsync();
+        var victimEmail = $"victim-{Guid.NewGuid():N}@example.com";
+        await factory.CreateCustomerAsync(e.Tenant, victimEmail);
+        var attacker = factory.ClientFor(e.Tenant.Host);
+
+        var status = await factory.BuyAsync(attacker, e.TicketTypeId, victimEmail);
+
+        Assert.Equal("completed", status.Status);
+        Assert.False(status.SignedIn);
+        Assert.Equal(HttpStatusCode.Unauthorized, (await attacker.GetAsync("/api/v1/me")).StatusCode);
+        Assert.Single(factory.Emails.To(victimEmail));
+    }
+
+    [Fact]
     public async Task Webhook_is_idempotent_for_redelivery_and_for_different_events_of_the_same_session()
     {
         var e = await factory.CreatePublishedEventAsync();
