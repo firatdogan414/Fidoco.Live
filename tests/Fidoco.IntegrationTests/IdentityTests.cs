@@ -48,6 +48,21 @@ public sealed class IdentityTests(FidocoApiFactory factory) : IClassFixture<Fido
     }
 
     [Fact]
+    public async Task Login_link_used_concurrently_signs_in_only_once()
+    {
+        var tenant = await factory.CreateTenantAsync();
+        var email = $"race-{Guid.NewGuid():N}@example.com";
+        await factory.CreateCustomerAsync(tenant, email);
+        var token = await factory.RequestLoginTokenAsync(factory.ClientFor(tenant.Host), email);
+
+        var responses = await Task.WhenAll(Enumerable.Range(0, 20).Select(_ =>
+            factory.ClientFor(tenant.Host).PostAsJsonAsync("/api/v1/auth/verify", new { token })));
+
+        Assert.Equal(1, responses.Count(r => r.StatusCode == HttpStatusCode.OK));
+        Assert.All(responses.Where(r => r.StatusCode != HttpStatusCode.OK), r => Assert.Equal(HttpStatusCode.BadRequest, r.StatusCode));
+    }
+
+    [Fact]
     public async Task Customer_signs_in_with_magic_link()
     {
         var tenant = await factory.CreateTenantAsync();
