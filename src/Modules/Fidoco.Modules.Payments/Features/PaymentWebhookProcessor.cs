@@ -92,7 +92,23 @@ internal sealed class PaymentWebhookProcessor(
             logger.LogWarning("Checkout {CheckoutId} paid {Amount} but expected {Expected}", checkout.Id, amount, expected);
         }
 
-        var customerId = checkout.CustomerId ?? await customers.GetOrCreateAsync(email, cancellationToken);
+        Guid customerId;
+        if (checkout.CustomerId is { } signedInCustomer)
+        {
+            customerId = signedInCustomer;
+        }
+        else
+        {
+            var account = await customers.GetOrCreateAsync(email, cancellationToken);
+            customerId = account.Id;
+            if (!account.Created)
+            {
+                // The e-mail typed on the payment page is unverified, so the paying browser must not be signed
+                // into an account that already existed; the owner signs in with the receipt link instead.
+                checkout.BrowserNonceHash = null;
+            }
+        }
+
         var now = time.GetUtcNow();
         var purchase = Purchase.Complete(checkout, customerId, email.Trim(), amount, webhook.PaymentIntentId, now);
         db.Purchases.Add(purchase);

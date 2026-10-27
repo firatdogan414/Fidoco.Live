@@ -45,11 +45,14 @@ public static class FidocoClaims
 
 public sealed record CustomerInfo(Guid Id, string Email);
 
+/// <summary>The customer for an e-mail address, and whether this call created the account.</summary>
+public sealed record CustomerAccount(Guid Id, bool Created);
+
 /// <summary>Customer accounts of the current tenant (one account per e-mail and tenant).</summary>
 public interface ICustomerAccounts
 {
     /// <summary>Finds or creates the customer for <paramref name="email"/>; safe to call concurrently.</summary>
-    Task<Guid> GetOrCreateAsync(string email, CancellationToken cancellationToken);
+    Task<CustomerAccount> GetOrCreateAsync(string email, CancellationToken cancellationToken);
 
     Task<CustomerInfo?> GetAsync(Guid customerId, CancellationToken cancellationToken);
 }
