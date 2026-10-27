@@ -124,10 +124,15 @@ internal static class AdminAuthEndpoints
             user.PasswordHash = hasher.HashPassword(user, request.Password);
         }
 
+        if (string.IsNullOrEmpty(user.SecurityStamp))
+        {
+            user.SecurityStamp = SecurityStamps.New(); // admins created before security stamps existed
+        }
+
         user.LastLoginAt = time.GetUtcNow();
         await db.SaveChangesAsync(cancellationToken);
 
-        await AdminAccounts.SignInAsync(context, user.Id, user.Email, user.Role, user.TenantId);
+        await AdminAccounts.SignInAsync(context, user.Id, user.Email, user.Role, user.TenantId, user.SecurityStamp);
         return Results.Ok(new AdminMeResponse(user.Email, user.Role));
     }
 }

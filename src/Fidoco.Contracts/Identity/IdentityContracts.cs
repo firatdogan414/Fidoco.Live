@@ -36,6 +36,9 @@ public static class FidocoClaims
     public const string TenantId = "fidoco:tid";
     public const string Email = "fidoco:email";
 
+    /// <summary>Admin cookies: the admin's security stamp when signing in (see AdminSessionValidator).</summary>
+    public const string SecurityStamp = "fidoco:stamp";
+
     /// <summary>
     /// A purchase line the session may watch. Present only on sessions from direct sign-in after a checkout,
     /// which never get account access: the e-mail typed on the payment page is unverified.

@@ -53,9 +53,14 @@ internal static class PlatformAuthEndpoints
             return ApiResults.Problem(StatusCodes.Status401Unauthorized, "invalid_credentials");
         }
 
+        if (string.IsNullOrEmpty(admin.SecurityStamp))
+        {
+            admin.SecurityStamp = SecurityStamps.New(); // admins created before security stamps existed
+        }
+
         admin.LastLoginAt = time.GetUtcNow();
         await db.SaveChangesAsync(cancellationToken);
-        await AdminAccounts.SignInAsync(context, admin.Id, admin.Email, Roles.PlatformAdmin, tenantId: null);
+        await AdminAccounts.SignInAsync(context, admin.Id, admin.Email, Roles.PlatformAdmin, tenantId: null, admin.SecurityStamp);
         return Results.Ok(new MeResponse(admin.Email, Roles.PlatformAdmin));
     }
 

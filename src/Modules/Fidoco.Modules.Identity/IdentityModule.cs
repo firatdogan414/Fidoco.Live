@@ -29,7 +29,11 @@ public static class IdentityModule
 
         services.AddAuthentication(AuthSchemes.Customer)
             .AddCookie(AuthSchemes.Customer, o => ConfigureCookie(o, "fidoco.customer", TimeSpan.FromDays(30)))
-            .AddCookie(AuthSchemes.Admin, o => ConfigureCookie(o, "fidoco.admin", TimeSpan.FromHours(12)));
+            .AddCookie(AuthSchemes.Admin, o =>
+            {
+                ConfigureCookie(o, "fidoco.admin", TimeSpan.FromHours(12));
+                o.Events.OnValidatePrincipal = AdminSessionValidator.ValidateAsync;
+            });
 
         services.AddScoped<IAuthorizationHandler, TenantMatchHandler>();
         services.AddAuthorizationBuilder()

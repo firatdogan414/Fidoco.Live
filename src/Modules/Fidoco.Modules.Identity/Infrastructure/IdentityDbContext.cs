@@ -52,6 +52,7 @@ internal sealed class IdentityDbContext(DbContextOptions<IdentityDbContext> opti
             e.Property(a => a.Email).HasMaxLength(254);
             e.HasIndex(a => new { a.TenantId, a.Email }).IsUnique();
             e.Property(a => a.PasswordHash).HasMaxLength(500);
+            e.Property(a => a.SecurityStamp).HasMaxLength(64);
             e.Property(a => a.Role).HasMaxLength(30);
         });
 
@@ -62,6 +63,7 @@ internal sealed class IdentityDbContext(DbContextOptions<IdentityDbContext> opti
             e.Property(a => a.Email).HasMaxLength(254);
             e.HasIndex(a => a.Email).IsUnique();
             e.Property(a => a.PasswordHash).HasMaxLength(500);
+            e.Property(a => a.SecurityStamp).HasMaxLength(64);
         });
 
         modelBuilder.Entity<AdminToken>(e =>
@@ -70,6 +72,7 @@ internal sealed class IdentityDbContext(DbContextOptions<IdentityDbContext> opti
             e.HasKey(t => t.Id);
             e.Property(t => t.TokenHash).HasMaxLength(64);
             e.HasIndex(t => t.TokenHash).IsUnique();
+            e.HasIndex(t => new { t.AdminKind, t.AdminId });
             e.Property(t => t.AdminKind).HasConversion<string>().HasMaxLength(20);
             e.Property(t => t.Purpose).HasConversion<string>().HasMaxLength(20);
         });
